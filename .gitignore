@@ -1,0 +1,10 @@
+/bin
+.env
+
+*.out
+*.test
+*.prof
+
+/.zed
+/.vscode
+/.idea
