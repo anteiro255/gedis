@@ -77,7 +77,7 @@ func (conn *Connection) Read(timeout time.Duration) (*protocol.Request, error) {
 		return nil, err // connection closed, EOF, etc.
 	}
 	if n != protocol.HeaderSize {
-		return nil, status.WRONG_INPUT
+		return nil, status.WrongInput
 	}
 
 	var req protocol.Request
@@ -106,11 +106,11 @@ func (conn Connection) writeError(code status.Status) {
 		slog.Error("Failed to write to the connection with ip = " + ip + ". Error: " + err.Error())
 	}
 	switch code {
-	case status.NO_SUCH_KEY:
+	case status.NoSuchKey:
 		slog.Info("The user at " + ip + " submitted not existing key")
-	case status.WRONG_INPUT:
+	case status.WrongInput:
 		slog.Info("The user at " + ip + " submitted wrong input")
-	case status.INTERNAL_ERROR:
+	case status.InternalError:
 		slog.Error("Internal error occured during the serving the user at " + ip)
 	default:
 		slog.Error("Wrong error code value was passed to the handlers.error() function, the code value: " + strconv.Itoa(int(code)))
@@ -129,15 +129,15 @@ func (conn Connection) Serve() {
 	case errors.Is(err, os.ErrDeadlineExceeded):
 		slog.Info("The user exceeded timeout.", "ip", ip)
 		return
-	case errors.Is(err, status.WRONG_INPUT):
-		conn.writeError(status.WRONG_INPUT)
+	case errors.Is(err, status.WrongInput):
+		conn.writeError(status.WrongInput)
 		slog.Error("Failed to read from the connection with ip = " + ip + ". Error: " + err.Error())
 		return
 	}
 
 	action := action.Action{
 		DB:         conn.Db,
-		ActionType: action.ActionType(req.Header.Operation),
+		ActionType: protocol.ActionType(req.Header.Operation),
 		Key:        req.Header.Key,
 		Body:       req.Body,
 	}
@@ -145,7 +145,7 @@ func (conn Connection) Serve() {
 	if err != nil {
 		stat, ok := err.(status.Status)
 		if !ok {
-			stat = status.INTERNAL_ERROR
+			stat = status.InternalError
 		}
 		conn.writeError(stat)
 		slog.Error(stat.Error())

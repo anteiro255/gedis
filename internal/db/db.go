@@ -73,7 +73,7 @@ func (db *DB) Set(key Key, val Val) error {
 
 	_, ok := db.keyVal[key]
 	if ok {
-		return status.SUCH_KEY_ALREADY_EXISTS
+		return status.SuchKeyAlreadyExists
 	}
 	db.keyVal[key] = val
 	return status.OK

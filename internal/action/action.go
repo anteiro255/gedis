@@ -1,38 +1,28 @@
 package action
 
-import "github.com/anteiro255/gedis/internal/db"
-
-type ActionType uint8
-
-const (
-	Set ActionType = iota
-	Get
-	Del
-	Exist
-	TTL_Set
-	TTL_Get
-	TTL_Del
-	TTL_Exist
+import (
+	"github.com/anteiro255/gedis/internal/db"
+	"github.com/anteiro255/gedis/pkg/protocol"
 )
 
 type Action struct {
 	DB         *db.DB
-	ActionType ActionType
+	ActionType protocol.ActionType
 	Key        db.Key
 	Body       []byte
 }
 
 func (a *Action) Perform() error {
 	switch a.ActionType {
-	case Set:
+	case protocol.Set:
 		return a.DB.Set(a.Key, *db.NewVal(a.Body).AddTTL(db.TTLNever{}))
-	case Get:
-	case Del:
-	case Exist:
-	case TTL_Set:
-	case TTL_Get:
-	case TTL_Del:
-	case TTL_Exist:
+	case protocol.Get:
+	case protocol.Del:
+	case protocol.Exist:
+	case protocol.TTL_Set:
+	case protocol.TTL_Get:
+	case protocol.TTL_Del:
+	case protocol.TTL_Exist:
 
 	}
 	return nil

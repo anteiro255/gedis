@@ -4,23 +4,23 @@ type Status uint32
 
 const (
 	OK Status = iota
-	NO_SUCH_KEY
-	SUCH_KEY_ALREADY_EXISTS
-	WRONG_INPUT
-	INTERNAL_ERROR
+	NoSuchKey
+	SuchKeyAlreadyExists
+	WrongInput
+	InternalError
 )
 
 func (s Status) Error() string {
 	switch s {
 	case OK:
 		return "OK"
-	case NO_SUCH_KEY:
+	case NoSuchKey:
 		return "No such key"
-	case SUCH_KEY_ALREADY_EXISTS:
+	case SuchKeyAlreadyExists:
 		return "Such key already exists"
-	case WRONG_INPUT:
+	case WrongInput:
 		return "Wrong input"
-	case INTERNAL_ERROR:
+	case InternalError:
 		return "Internal error"
 	default:
 		return "Unknown status code"
