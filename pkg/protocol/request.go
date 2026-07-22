@@ -5,29 +5,40 @@ import (
 )
 
 // Representation the Request structure in protocol:
-// Header:   Header;  20bytes
-// Body:     []byte  changeable size
+// Header:  RequestHeader;  20bytes
+// Body:    []byte;         changeable size
 type Request struct {
 	Body   []byte
-	Header *Header
+	Header *RequestHeader
+}
+
+func NewRequest(ActionType ActionType, Key [RequestKeySize]byte, Body *[]byte) *Request {
+	return &Request{
+		Header: &RequestHeader{
+			Operation: uint8(ActionType),
+			Key:       Key,
+			BodySize:  uint32(len(*Body)),
+		},
+		Body: *Body,
+	}
 }
 
 func NewRequestFromBytes(in []byte) (*Request, error) {
 	var req Request
-	if len(in) < HeaderSize {
+	if len(in) < RequestHeaderSize {
 		return nil, status.WrongInput
 	}
-	req.Header = NewHeaderFromBytes([HeaderSize]byte(in[:HeaderSize]))
-	req.Body = in[HeaderSize:]
+	req.Header = NewRequestHeaderFromBytes([RequestHeaderSize]byte(in[:RequestHeaderSize]))
+	req.Body = in[RequestHeaderSize:]
 	return &req, nil
 }
 
 func (r *Request) ToBytes() []byte {
 	headerBytes := r.Header.ToBytes()
-	b := make([]byte, HeaderSize+len(r.Body))
+	b := make([]byte, RequestHeaderSize+len(r.Body))
 
 	copy(b, headerBytes[:])
-	copy(b[HeaderSize:], r.Body)
+	copy(b[RequestHeaderSize:], r.Body)
 	return b
 }
 

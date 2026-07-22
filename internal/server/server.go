@@ -67,7 +67,7 @@ func (conn *Connection) Read(timeout time.Duration) (*protocol.Request, error) {
 	defer conn.Conn.SetReadDeadline(time.Time{})
 
 	// io.ReadFull will block until 'headerAsBytes' is completely filled OR the deadline is hit
-	var headerAsBytes [protocol.HeaderSize]byte
+	var headerAsBytes [protocol.RequestHeaderSize]byte
 	n, err := io.ReadFull(conn.Conn, headerAsBytes[:])
 	if err != nil {
 		// If a timeout occurred, err will be a network error where Timeout() == true
@@ -76,12 +76,12 @@ func (conn *Connection) Read(timeout time.Duration) (*protocol.Request, error) {
 		}
 		return nil, err // connection closed, EOF, etc.
 	}
-	if n != protocol.HeaderSize {
+	if n != protocol.RequestHeaderSize {
 		return nil, status.WrongInput
 	}
 
 	var req protocol.Request
-	req.Header = protocol.NewHeaderFromBytes(headerAsBytes)
+	req.Header = protocol.NewRequestHeaderFromBytes(headerAsBytes)
 
 	body := make([]byte, req.Header.BodySize)
 	n, err = io.ReadFull(conn.Conn, body)
