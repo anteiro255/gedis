@@ -12,14 +12,14 @@ type Request struct {
 	Header *RequestHeader
 }
 
-func NewRequest(ActionType ActionType, Key [RequestKeySize]byte, Body *[]byte) *Request {
+func NewRequest(ActionType ActionType, Key [RequestKeySize]byte, Body []byte) *Request {
 	return &Request{
 		Header: &RequestHeader{
 			Operation: uint8(ActionType),
 			Key:       Key,
-			BodySize:  uint32(len(*Body)),
+			BodySize:  uint32(len(Body)),
 		},
-		Body: *Body,
+		Body: Body,
 	}
 }
 

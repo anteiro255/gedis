@@ -8,6 +8,7 @@ const (
 	SuchKeyAlreadyExists
 	WrongInput
 	InternalError
+	DeadLineExceeded
 )
 
 func (s Status) Error() string {
@@ -22,6 +23,8 @@ func (s Status) Error() string {
 		return "Wrong input"
 	case InternalError:
 		return "Internal error"
+	case DeadLineExceeded:
+		return "Deadline exceeded"
 	default:
 		return "Unknown status code"
 	}

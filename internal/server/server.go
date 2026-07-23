@@ -2,11 +2,9 @@ package server
 
 import (
 	"encoding/binary"
-	"errors"
 	"io"
 	"log/slog"
 	"net"
-	"os"
 	"strconv"
 	"time"
 
@@ -30,7 +28,6 @@ func (s *Server) SetDB(d *db.DB) {
 }
 
 func (s *Server) RunAt(address string) error {
-
 	slog.Info("Starting listening...")
 
 	var err error
@@ -46,7 +43,9 @@ func (s *Server) RunAt(address string) error {
 		conn.Conn, err = s.Listener.Accept()
 		if err != nil {
 			slog.Error(err.Error())
+			continue
 		}
+
 		conn.Db = s.Db
 		go conn.Serve()
 	}
@@ -57,7 +56,7 @@ type Connection struct {
 	Db   *db.DB
 }
 
-func (conn *Connection) Read(timeout time.Duration) (*protocol.Request, error) {
+func (conn *Connection) read(timeout time.Duration) (*protocol.Request, error) {
 	// Set an absolute deadline for when this read operation must complete
 	if err := conn.Conn.SetReadDeadline(time.Now().Add(timeout)); err != nil {
 		return nil, err
@@ -68,50 +67,61 @@ func (conn *Connection) Read(timeout time.Duration) (*protocol.Request, error) {
 
 	// io.ReadFull will block until 'headerAsBytes' is completely filled OR the deadline is hit
 	var headerAsBytes [protocol.RequestHeaderSize]byte
-	n, err := io.ReadFull(conn.Conn, headerAsBytes[:])
+	_, err := io.ReadFull(conn.Conn, headerAsBytes[:])
 	if err != nil {
 		// If a timeout occurred, err will be a network error where Timeout() == true
 		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-			return nil, os.ErrDeadlineExceeded // custom timeout error or handle accordingly
+			return nil, status.DeadLineExceeded // custom timeout error or handle accordingly
 		}
 		return nil, err // connection closed, EOF, etc.
-	}
-	if n != protocol.RequestHeaderSize {
-		return nil, status.WrongInput
 	}
 
 	var req protocol.Request
 	req.Header = protocol.NewRequestHeaderFromBytes(headerAsBytes)
 
 	body := make([]byte, req.Header.BodySize)
-	n, err = io.ReadFull(conn.Conn, body)
+	_, err = io.ReadFull(conn.Conn, body)
 	req.Body = body
 
-	return &req, nil
+	return &req, err
 }
 
-func (conn Connection) write(code status.Status, body []byte) error {
-	_, err := conn.Conn.Write(binary.BigEndian.AppendUint32(nil, uint32(code)))
+func (conn Connection) writeAll(code status.Status, body []byte) error {
+	n, err := conn.Conn.Write(binary.BigEndian.AppendUint32(nil, uint32(code)))
 	if err != nil {
 		return err
 	}
-	_, err = conn.Conn.Write(body)
-	return err
+
+	if n != 4 {
+		return io.ErrShortWrite
+	}
+
+	for len(body) > 0 {
+		n, err := conn.Conn.Write(body)
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return io.ErrShortWrite
+		}
+		body = body[n:]
+	}
+	return nil
 }
 
 func (conn Connection) writeError(code status.Status) {
 	ip := conn.Conn.RemoteAddr().String()
-	err := conn.write(code, nil)
+	err := conn.writeAll(code, nil)
 	if err != nil {
-		slog.Error("Failed to write to the connection with ip = " + ip + ". Error: " + err.Error())
+		slog.Info("Failed to write to the connection", "ip", ip, "Error", err.Error())
 	}
 	switch code {
 	case status.NoSuchKey:
-		slog.Info("The user at " + ip + " submitted not existing key")
+		slog.Info("The user submitted not existing key", "ip", ip)
 	case status.WrongInput:
-		slog.Info("The user at " + ip + " submitted wrong input")
+		slog.Info("The user submitted wrong input", "ip", ip)
 	case status.InternalError:
-		slog.Error("Internal error occured during the serving the user at " + ip)
+		slog.Info("Internal error occured during the serving the user", "ip", ip)
 	default:
 		slog.Error("Wrong error code value was passed to the handlers.error() function, the code value: " + strconv.Itoa(int(code)))
 	}
@@ -121,18 +131,15 @@ func (conn Connection) Serve() {
 	defer conn.Conn.Close()
 	ip := conn.Conn.RemoteAddr().String()
 
-	slog.Info("A connection with ip = " + ip + " was accepted")
+	slog.Info("A connection was accepted", "ip", ip)
 
-	req, err := conn.Read(3 * time.Second)
-
-	switch {
-	case errors.Is(err, os.ErrDeadlineExceeded):
-		slog.Info("The user exceeded timeout.", "ip", ip)
-		return
-	case errors.Is(err, status.WrongInput):
-		conn.writeError(status.WrongInput)
-		slog.Error("Failed to read from the connection with ip = " + ip + ". Error: " + err.Error())
-		return
+	req, err := conn.read(3 * time.Second)
+	if err != nil {
+		slog.Info(err.Error(), "ip", ip)
+		if err, ok := err.(status.Status); ok {
+			conn.writeError(err)
+			return
+		}
 	}
 
 	action := action.Action{
@@ -141,20 +148,13 @@ func (conn Connection) Serve() {
 		Key:        req.Header.Key,
 		Body:       req.Body,
 	}
-	err = action.Perform()
-	if err != nil {
-		stat, ok := err.(status.Status)
-		if !ok {
-			stat = status.InternalError
-		}
-		conn.writeError(stat)
+	body, stat := action.Perform()
+	if stat == status.InternalError {
 		slog.Error(stat.Error())
+		conn.writeError(stat)
 		return
 	}
 
-	err = conn.Conn.Close()
-	if err != nil {
-		slog.Error(err.Error())
-	}
-	slog.Info("The connection was successfully served and closed", "ip", ip)
+	conn.writeAll(stat, body)
+	slog.Info("The connection was successfully served", "ip", ip, "status", stat.Error())
 }

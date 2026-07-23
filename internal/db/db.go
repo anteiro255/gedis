@@ -1,16 +1,13 @@
 package db
 
 import (
-	"context"
 	"sync"
-	"time"
-
-	"github.com/anteiro255/gedis/pkg/protocol/status"
 )
 
+// TTL interface
+// and structtures that implement it
 type TTL interface {
-	// Return the new TTL state after decreasing
-	decreaseBy1() TTL
+	decreaseBy1() TTL // Return the new TTL state after decreasing
 }
 
 type TTLNever struct{}
@@ -37,6 +34,8 @@ func (t TTLSeconds) decreaseBy1() TTL {
 	return TTLSeconds{Seconds: t.Seconds - 1} // Return updated seconds
 }
 
+// Key and Val structures
+// and their methods
 type Key [16]byte
 type Val struct {
 	data []byte
@@ -49,13 +48,17 @@ func NewVal(data []byte) *Val {
 		ttl:  TTLNever{},
 	}
 }
-func (v *Val) AddTTL(ttl TTL) *Val {
-	return &Val{
-		data: v.data,
-		ttl:  ttl,
-	}
+func (v *Val) SetTTL(ttl TTL) {
+	v.ttl = ttl
+}
+func (v *Val) TTL() TTL {
+	return v.ttl
+}
+func (v *Val) Data() []byte {
+	return v.data
 }
 
+// The DB structure itself
 type DB struct {
 	mu     sync.RWMutex
 	keyVal map[Key]Val
@@ -64,47 +67,5 @@ type DB struct {
 func NewDB() *DB {
 	return &DB{
 		keyVal: make(map[Key]Val),
-	}
-}
-
-func (db *DB) Set(key Key, val Val) error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
-	_, ok := db.keyVal[key]
-	if ok {
-		return status.SuchKeyAlreadyExists
-	}
-	db.keyVal[key] = val
-	return status.OK
-}
-
-func (db *DB) RunTTLManager(ctx context.Context) {
-	go func() {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				db.tickTTLs()
-			}
-		}
-	}()
-}
-
-func (db *DB) tickTTLs() {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
-	for k, v := range db.keyVal {
-		v.ttl = v.ttl.decreaseBy1()
-		if _, ok := v.ttl.(TTLExpired); ok {
-			delete(db.keyVal, k)
-		} else {
-			db.keyVal[k] = v
-		}
 	}
 }
