@@ -1,7 +1,7 @@
 package server
 
 import (
-	"encoding/binary"
+	"errors"
 	"io"
 	"log/slog"
 	"net"
@@ -71,7 +71,7 @@ func (conn *Connection) read(timeout time.Duration) (*protocol.Request, error) {
 	if err != nil {
 		// If a timeout occurred, err will be a network error where Timeout() == true
 		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-			return nil, status.DeadLineExceeded // custom timeout error or handle accordingly
+			return nil, err // custom timeout error or handle accordingly
 		}
 		return nil, err // connection closed, EOF, etc.
 	}
@@ -80,81 +80,92 @@ func (conn *Connection) read(timeout time.Duration) (*protocol.Request, error) {
 	req.Header = protocol.NewRequestHeaderFromBytes(headerAsBytes)
 
 	body := make([]byte, req.Header.BodySize)
-	_, err = io.ReadFull(conn.Conn, body)
+	if req.Header.BodySize > 0 {
+		_, err = io.ReadFull(conn.Conn, body)
+		if err != nil {
+			return nil, err
+		}
+	}
 	req.Body = body
 
-	return &req, err
+	return &req, nil
 }
 
-func (conn Connection) writeAll(code status.Status, body []byte) error {
-	n, err := conn.Conn.Write(binary.BigEndian.AppendUint32(nil, uint32(code)))
-	if err != nil {
-		return err
-	}
-
-	if n != 4 {
-		return io.ErrShortWrite
-	}
-
-	for len(body) > 0 {
-		n, err := conn.Conn.Write(body)
+func (conn *Connection) writeResponse(resp *protocol.Response) error {
+	respBytes := resp.ToBytes()
+	totalWritten := 0
+	for totalWritten < len(respBytes) {
+		n, err := conn.Conn.Write(respBytes[totalWritten:])
 		if err != nil {
 			return err
 		}
 		if n == 0 {
 			return io.ErrShortWrite
 		}
-		body = body[n:]
+		totalWritten += n
 	}
 	return nil
 }
 
-func (conn Connection) writeError(code status.Status) {
-	ip := conn.Conn.RemoteAddr().String()
-	err := conn.writeAll(code, nil)
+func (conn *Connection) writeError(code status.Status) {
+	addr := conn.Conn.RemoteAddr().String()
+	err := conn.writeResponse(protocol.NewResponse(code, nil))
 	if err != nil {
-		slog.Info("Failed to write to the connection", "ip", ip, "Error", err.Error())
+		slog.Info("Failed to write to the connection", "addr", addr, "Error", err.Error())
 	}
 	switch code {
 	case status.NoSuchKey:
-		slog.Info("The user submitted not existing key", "ip", ip)
+		slog.Info("The user submitted not existing key", "addr", addr)
 	case status.WrongInput:
-		slog.Info("The user submitted wrong input", "ip", ip)
+		slog.Info("The user submitted wrong input", "addr", addr)
 	case status.InternalError:
-		slog.Info("Internal error occured during the serving the user", "ip", ip)
+		slog.Info("Internal error occured during the serving the user", "addr", addr)
 	default:
 		slog.Error("Wrong error code value was passed to the handlers.error() function, the code value: " + strconv.Itoa(int(code)))
 	}
 }
 
-func (conn Connection) Serve() {
+func (conn *Connection) Serve() {
 	defer conn.Conn.Close()
-	ip := conn.Conn.RemoteAddr().String()
+	addr := conn.Conn.RemoteAddr().String()
 
-	slog.Info("A connection was accepted", "ip", ip)
+	slog.Info("A TCP connection was accepted", "addr", addr)
 
-	req, err := conn.read(3 * time.Second)
-	if err != nil {
-		slog.Info(err.Error(), "ip", ip)
-		if err, ok := err.(status.Status); ok {
-			conn.writeError(err)
-			return
+	for {
+		req, err := conn.read(3 * time.Second)
+		if err != nil {
+			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+				slog.Info("Connection closed by client", "addr", addr)
+				break
+			}
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				slog.Info("Connection read timeout", "addr", addr)
+				conn.writeError(status.DeadlineExceeded)
+				break
+			}
+			slog.Info(err.Error(), "addr", addr)
+			break
 		}
-	}
 
-	action := action.Action{
-		DB:         conn.Db,
-		ActionType: protocol.ActionType(req.Header.Operation),
-		Key:        req.Header.Key,
-		Body:       req.Body,
-	}
-	body, stat := action.Perform()
-	if stat == status.InternalError {
-		slog.Error(stat.Error())
-		conn.writeError(stat)
-		return
-	}
+		action := action.Action{
+			DB:         conn.Db,
+			ActionType: protocol.ActionType(req.Header.Operation),
+			Key:        req.Header.Key,
+			Body:       req.Body,
+		}
+		body, stat := action.Perform()
+		if stat == status.InternalError {
+			slog.Error(stat.Error())
+			conn.writeError(stat)
+			break
+		}
 
-	conn.writeAll(stat, body)
-	slog.Info("The connection was successfully served", "ip", ip, "status", stat.Error())
+		if err := conn.writeResponse(protocol.NewResponse(stat, body)); err != nil {
+			slog.Error("Failed to write response", "addr", addr, "error", err.Error())
+			break
+		}
+
+		slog.Info("The request was processed successfully", "addr", addr, "status", stat.Error(), "operation", req.Header.Operation, "key", req.Header.Key)
+	}
+	slog.Info("The TCP connection was closed", "addr", addr)
 }

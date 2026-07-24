@@ -13,13 +13,13 @@ type Response struct {
 	Body   []byte
 }
 
-func NewResponse(s status.Status, body *[]byte) *Response {
+func NewResponse(s status.Status, body []byte) *Response {
 	return &Response{
 		Header: ResponseHeader{
 			Status:   s,
-			BodySize: uint32(len(*body)),
+			BodySize: uint32(len(body)),
 		},
-		Body: *body,
+		Body: body,
 	}
 }
 

@@ -1,0 +1,171 @@
+package server_test
+
+import (
+	"context"
+	"net"
+	"testing"
+
+	client "github.com/anteiro255/go-gedis"
+	"github.com/anteiro255/gedis/internal/db"
+	"github.com/anteiro255/gedis/internal/server"
+	"github.com/anteiro255/gedis/pkg/protocol"
+	"github.com/anteiro255/gedis/pkg/protocol/status"
+)
+
+func startTestServer(t *testing.T) string {
+	database := db.NewDB()
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	database.RunTTLManager(ctx)
+
+	s := server.NewServer()
+	s.SetDB(database)
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to listen: %v", err)
+	}
+	s.Listener = listener
+	addr := listener.Addr().String()
+
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			c := server.Connection{
+				Conn: conn,
+				Db:   s.Db,
+			}
+			go c.Serve()
+		}
+	}()
+
+	t.Cleanup(func() {
+		listener.Close()
+	})
+
+	return addr
+}
+
+func TestIntegration_SetAndGetMultiple(t *testing.T) {
+	addr := startTestServer(t)
+
+	c, err := client.NewClient(addr)
+	if err != nil {
+		t.Fatalf("failed to connect: %v", err)
+	}
+	defer c.Close()
+
+	key1 := [protocol.RequestKeySize]byte{1}
+	val1 := []byte("val1")
+
+	key2 := [protocol.RequestKeySize]byte{2}
+	val2 := []byte("val2")
+
+	// 1. Set key1
+	err = c.Set(key1, val1)
+	if err != nil {
+		t.Fatalf("Set key1 failed: %v", err)
+	}
+
+	// 2. Set key2 (tests multiple requests over single connection)
+	err = c.Set(key2, val2)
+	if err != nil {
+		t.Fatalf("Set key2 failed: %v", err)
+	}
+
+	// 3. Get key1
+	got1, err := c.Get(key1)
+	if err != nil {
+		t.Fatalf("Get key1 failed: %v", err)
+	}
+	if string(got1) != string(val1) {
+		t.Fatalf("Get key1 expected '%s', got '%s'", val1, got1)
+	}
+
+	// 4. Get key2
+	got2, err := c.Get(key2)
+	if err != nil {
+		t.Fatalf("Get key2 failed: %v", err)
+	}
+	if string(got2) != string(val2) {
+		t.Fatalf("Get key2 expected '%s', got '%s'", val2, got2)
+	}
+
+	// 5. Exist key1
+	exists, err := c.Exist(key1)
+	if err != nil || !exists {
+		t.Fatalf("Exist key1 expected true, got %v, err %v", exists, err)
+	}
+
+	// 6. Del key1
+	err = c.Del(key1)
+	if err != nil {
+		t.Fatalf("Del key1 failed: %v", err)
+	}
+
+	// 7. Get key1 after Del
+	_, err = c.Get(key1)
+	if err != status.NoSuchKey {
+		t.Fatalf("Get key1 after Del expected status.NoSuchKey, got: %v", err)
+	}
+}
+
+func TestIntegration_TTLOperations(t *testing.T) {
+	addr := startTestServer(t)
+
+	c, err := client.NewClient(addr)
+	if err != nil {
+		t.Fatalf("failed to connect: %v", err)
+	}
+	defer c.Close()
+
+	key := [protocol.RequestKeySize]byte{99}
+	val := []byte("ttl-val")
+
+	err = c.Set(key, val)
+	if err != nil {
+		t.Fatalf("Set failed: %v", err)
+	}
+
+	// Initially no TTL set
+	ttlExists, err := c.TTLExist(key)
+	if err != nil {
+		t.Fatalf("TTLExist failed: %v", err)
+	}
+	if ttlExists {
+		t.Fatalf("expected TTLExist false before TTLSet")
+	}
+
+	// Set TTL to 5 seconds
+	err = c.TTLSet(key, 5)
+	if err != nil {
+		t.Fatalf("TTLSet failed: %v", err)
+	}
+
+	ttlExists, err = c.TTLExist(key)
+	if err != nil || !ttlExists {
+		t.Fatalf("expected TTLExist true, got %v, err %v", ttlExists, err)
+	}
+
+	secs, err := c.TTLGet(key)
+	if err != nil {
+		t.Fatalf("TTLGet failed: %v", err)
+	}
+	if secs != 5 {
+		t.Fatalf("expected 5 seconds, got %d", secs)
+	}
+
+	// Remove TTL
+	err = c.TTLDel(key)
+	if err != nil {
+		t.Fatalf("TTLDel failed: %v", err)
+	}
+
+	ttlExists, err = c.TTLExist(key)
+	if err != nil || ttlExists {
+		t.Fatalf("expected TTLExist false after TTLDel, got %v", ttlExists)
+	}
+}

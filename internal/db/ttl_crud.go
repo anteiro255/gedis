@@ -10,6 +10,9 @@ func (db *DB) SetTTL(key Key, ttl TTL) status.Status {
 	if !ok {
 		return status.NoSuchKey
 	}
+	if _, expired := val.ttl.(TTLExpired); expired {
+		return status.NoSuchKey
+	}
 
 	val.ttl = ttl
 	db.keyVal[key] = val
@@ -24,6 +27,9 @@ func (db *DB) GetTTL(key Key) (TTL, status.Status) {
 	if !ok {
 		return nil, status.NoSuchKey
 	}
+	if _, expired := val.ttl.(TTLExpired); expired {
+		return nil, status.NoSuchKey
+	}
 
 	return val.ttl, status.OK
 }
@@ -34,6 +40,9 @@ func (db *DB) DelTTL(key Key) status.Status {
 
 	val, ok := db.keyVal[key]
 	if !ok {
+		return status.NoSuchKey
+	}
+	if _, expired := val.ttl.(TTLExpired); expired {
 		return status.NoSuchKey
 	}
 
@@ -50,6 +59,9 @@ func (db *DB) ExistsTTL(key Key) bool {
 	if !ok {
 		return false
 	}
+	if _, expired := val.ttl.(TTLExpired); expired {
+		return false
+	}
 
-	return val.ttl != nil
+	return true
 }

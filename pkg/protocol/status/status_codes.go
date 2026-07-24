@@ -5,10 +5,10 @@ type Status uint32
 const (
 	OK Status = iota
 	NoSuchKey
-	SuchKeyAlreadyExists
+	KeyAlreadyExists
 	WrongInput
 	InternalError
-	DeadLineExceeded
+	DeadlineExceeded
 )
 
 func (s Status) Error() string {
@@ -17,13 +17,13 @@ func (s Status) Error() string {
 		return "OK"
 	case NoSuchKey:
 		return "No such key"
-	case SuchKeyAlreadyExists:
+	case KeyAlreadyExists:
 		return "Such key already exists"
 	case WrongInput:
 		return "Wrong input"
 	case InternalError:
 		return "Internal error"
-	case DeadLineExceeded:
+	case DeadlineExceeded:
 		return "Deadline exceeded"
 	default:
 		return "Unknown status code"
