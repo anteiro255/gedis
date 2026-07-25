@@ -59,9 +59,6 @@ func (db *DB) ExistsTTL(key Key) bool {
 	if !ok {
 		return false
 	}
-	if _, expired := val.ttl.(TTLExpired); expired {
-		return false
-	}
-
-	return true
+	_, isTTL := val.ttl.(TTLSeconds)
+	return isTTL
 }

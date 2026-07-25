@@ -2,14 +2,14 @@ package server_test
 
 import (
 	"context"
+	"errors"
 	"net"
 	"testing"
 
-	client "github.com/anteiro255/go-gedis"
 	"github.com/anteiro255/gedis/internal/db"
 	"github.com/anteiro255/gedis/internal/server"
 	"github.com/anteiro255/gedis/pkg/protocol"
-	"github.com/anteiro255/gedis/pkg/protocol/status"
+	client "github.com/anteiro255/go-gedis"
 )
 
 func startTestServer(t *testing.T) string {
@@ -108,7 +108,7 @@ func TestIntegration_SetAndGetMultiple(t *testing.T) {
 
 	// 7. Get key1 after Del
 	_, err = c.Get(key1)
-	if err != status.NoSuchKey {
+	if !errors.Is(err, client.ErrNoSuchKey) {
 		t.Fatalf("Get key1 after Del expected status.NoSuchKey, got: %v", err)
 	}
 }
