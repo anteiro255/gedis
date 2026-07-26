@@ -24,13 +24,10 @@ func (db *DB) RunTTLManager(ctx context.Context) {
 func (db *DB) tickTTLs() {
 	db.mu.Lock()
 	defer db.mu.Unlock()
-
-	for k, v := range db.keyVal {
-		v.ttl = v.ttl.decreaseBy1()
-		if _, ok := v.ttl.(TTLExpired); ok {
+	for k, ttl := range db.keyTTL {
+		if !ttl.isAlive() {
 			delete(db.keyVal, k)
-		} else {
-			db.keyVal[k] = v
+			delete(db.keyTTL, k)
 		}
 	}
 }
