@@ -3,6 +3,7 @@ package server_test
 import (
 	"context"
 	"errors"
+	"net"
 	"testing"
 	"time"
 
@@ -26,7 +27,7 @@ func startTestServer(t *testing.T) string {
 		s.Close()
 	})
 
-	for _ = range 50 {
+	for range 50 {
 		if serverAddr := s.Addr(); serverAddr != "" {
 			return serverAddr
 		}
@@ -146,5 +147,67 @@ func TestIntegration_TTLOperations(t *testing.T) {
 	_, err = c.TTLGet(key)
 	if err != client.ErrNoTTL {
 		t.Fatalf("expected TTL not to exist after TTLDel, got %v", err.Error())
+	}
+}
+
+func TestIntegration_ConcurrentClients(t *testing.T) {
+	serverAddr := startTestServer(t)
+
+	numClients := 10
+	errChan := make(chan error, numClients)
+
+	for i := 0; i < numClients; i++ {
+		go func(id int) {
+			c, err := client.NewClient(serverAddr)
+			if err != nil {
+				errChan <- err
+				return
+			}
+			defer c.Close()
+
+			key := [protocol.RequestKeySize]byte{byte(id)}
+			val := []byte("concurrent_data")
+
+			if err := c.Set(key, val); err != nil {
+				errChan <- err
+				return
+			}
+			got, err := c.Get(key)
+			if err != nil || string(got) != string(val) {
+				errChan <- err
+				return
+			}
+			errChan <- nil
+		}(i)
+	}
+
+	for i := 0; i < numClients; i++ {
+		if err := <-errChan; err != nil {
+			t.Errorf("concurrent client error: %v", err)
+		}
+	}
+}
+
+func TestServer_RawConnection_MalformedData(t *testing.T) {
+	serverAddr := startTestServer(t)
+
+	conn, err := net.Dial("tcp", serverAddr)
+	if err != nil {
+		t.Fatalf("failed to dial server: %v", err)
+	}
+	defer conn.Close()
+
+	// Send garbage data that does not form a valid request header
+	_, err = conn.Write([]byte("garbage_short_data"))
+	if err != nil {
+		t.Fatalf("failed to write garbage data: %v", err)
+	}
+
+	// Server should close connection gracefully on malformed header
+	buf := make([]byte, 100)
+	n, _ := conn.Read(buf)
+	if n > 0 {
+		// Server might respond with error response before closing connection
+		t.Logf("server sent response to garbage data: %v", buf[:n])
 	}
 }

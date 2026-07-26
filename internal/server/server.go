@@ -47,9 +47,7 @@ func (s *Server) RunAt(address string) error {
 
 	slog.Info("Starting accepting connections...")
 	for {
-		var conn connection
-		conn.server = *s
-		conn.conn, err = s.listener.Accept()
+		netConn, err := s.listener.Accept()
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) {
 				slog.Info("Listener closed, stopping accept loop")
@@ -58,7 +56,12 @@ func (s *Server) RunAt(address string) error {
 			slog.Error(err.Error())
 			continue
 		}
-		go conn.Serve()
+
+		c := connection{
+			conn:   netConn,
+			server: s,
+		}
+		go c.Serve()
 	}
 }
 

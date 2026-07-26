@@ -15,7 +15,7 @@ import (
 
 type connection struct {
 	conn   net.Conn
-	server Server
+	server *Server
 }
 
 func (conn *connection) read() (*protocol.Request, error) {
@@ -80,6 +80,8 @@ func (conn *connection) writeError(code status.Status) {
 		slog.Info("The user submitted wrong input", "addr", addr)
 	case status.InternalError:
 		slog.Info("Internal error occured during the serving the user", "addr", addr)
+	case status.DeadlineExceeded:
+		slog.Info("Deadline exceeded", "addr", addr)
 	default:
 		slog.Error("Wrong error code value was passed to the handlers.error() function, the code value: " + strconv.Itoa(int(code)))
 	}
