@@ -131,23 +131,15 @@ func TestIntegration_TTLOperations(t *testing.T) {
 	}
 
 	// Initially no TTL set
-	ttlExists, err := c.TTLExist(key)
-	if err != nil {
-		t.Fatalf("TTLExist failed: %v", err)
-	}
-	if ttlExists {
-		t.Fatalf("expected TTLExist false before TTLSet")
+	_, err = c.TTLGet(key)
+	if err != client.ErrNoTTL {
+		t.Fatalf("expected TTL not to exist before TTLSet, got %v", err.Error())
 	}
 
 	// Set TTL to 5 seconds
 	err = c.TTLSet(key, 5)
 	if err != nil {
 		t.Fatalf("TTLSet failed: %v", err)
-	}
-
-	ttlExists, err = c.TTLExist(key)
-	if err != nil || !ttlExists {
-		t.Fatalf("expected TTLExist true, got %v, err %v", ttlExists, err)
 	}
 
 	secs, err := c.TTLGet(key)
@@ -164,8 +156,8 @@ func TestIntegration_TTLOperations(t *testing.T) {
 		t.Fatalf("TTLDel failed: %v", err)
 	}
 
-	ttlExists, err = c.TTLExist(key)
-	if err != nil || ttlExists {
-		t.Fatalf("expected TTLExist false after TTLDel, got %v", ttlExists)
+	_, err = c.TTLGet(key)
+	if err != client.ErrNoTTL {
+		t.Fatalf("expected TTL not to exist after TTLDel, got %v", err.Error())
 	}
 }

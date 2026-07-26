@@ -2,18 +2,12 @@ package db
 
 import "github.com/anteiro255/gedis/pkg/protocol/status"
 
-func (db *DB) Set(key Key, val *Val) status.Status {
+func (db *DB) Set(key Key, val Val) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	existing, ok := db.keyVal[key]
-	if ok {
-		if _, expired := existing.ttl.(TTLExpired); !expired {
-			return status.KeyAlreadyExists
-		}
-	}
-	db.keyVal[key] = *val
-	return status.OK
+	delete(db.keyTTL, key)
+	db.keyVal[key] = val
 }
 
 func (db *DB) Get(key Key) (Val, status.Status) {
@@ -24,37 +18,37 @@ func (db *DB) Get(key Key) (Val, status.Status) {
 	if !ok {
 		return Val{}, status.NoSuchKey
 	}
-	if _, expired := val.ttl.(TTLExpired); expired {
+	if ttl, ok := db.keyTTL[key]; ok && !ttl.isAlive() {
 		return Val{}, status.NoSuchKey
 	}
 	return val, status.OK
 }
 
-func (db *DB) Del(key Key) status.Status {
+func (db *DB) Del(key Key) (sts status.Status) {
+	sts = status.OK
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	val, ok := db.keyVal[key]
-	if !ok {
-		return status.NoSuchKey
+	if _, ok := db.keyVal[key]; !ok {
+		sts = status.NoSuchKey
+	} else if ttl, ok := db.keyTTL[key]; ok && !ttl.isAlive() {
+		sts = status.NoSuchKey
 	}
+
 	delete(db.keyVal, key)
-	if _, expired := val.ttl.(TTLExpired); expired {
-		return status.NoSuchKey
-	}
-	return status.OK
+	delete(db.keyTTL, key)
+	return
 }
 
-func (db *DB) Exists(key Key) bool {
+func (db *DB) Exists(key Key) status.Status {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	val, ok := db.keyVal[key]
-	if !ok {
-		return false
+	if _, ok := db.keyVal[key]; !ok {
+		return status.NoSuchKey
+	} else if ttl, ok := db.keyTTL[key]; ok && !ttl.isAlive() {
+		return status.NoSuchKey
 	}
-	if _, expired := val.ttl.(TTLExpired); expired {
-		return false
-	}
-	return true
+
+	return status.OK
 }

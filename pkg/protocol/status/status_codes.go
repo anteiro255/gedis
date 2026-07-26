@@ -1,11 +1,14 @@
 package status
 
+import "strconv"
+
 type Status uint32
 
 const (
 	OK Status = iota
-	NoSuchKey
 	KeyAlreadyExists
+	NoSuchKey
+	NoTTL
 	WrongInput
 	InternalError
 	DeadlineExceeded
@@ -15,10 +18,12 @@ func (s Status) Error() string {
 	switch s {
 	case OK:
 		return "OK"
-	case NoSuchKey:
-		return "No such key"
 	case KeyAlreadyExists:
 		return "Such key already exists"
+	case NoSuchKey:
+		return "No such key"
+	case NoTTL:
+		return "The key doesn't have TTL"
 	case WrongInput:
 		return "Wrong input"
 	case InternalError:
@@ -26,6 +31,6 @@ func (s Status) Error() string {
 	case DeadlineExceeded:
 		return "Deadline exceeded"
 	default:
-		return "Unknown status code"
+		return "Unknown status code: " + strconv.Itoa(int(s))
 	}
 }

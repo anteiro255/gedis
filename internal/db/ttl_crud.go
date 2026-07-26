@@ -1,21 +1,27 @@
 package db
 
-import "github.com/anteiro255/gedis/pkg/protocol/status"
+import (
+	"time"
+
+	"github.com/anteiro255/gedis/pkg/protocol/status"
+)
 
 func (db *DB) SetTTL(key Key, ttl TTL) status.Status {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	val, ok := db.keyVal[key]
+	_, ok := db.keyVal[key]
 	if !ok {
 		return status.NoSuchKey
 	}
-	if _, expired := val.ttl.(TTLExpired); expired {
+
+	if existingTTL, ok := db.keyTTL[key]; ok && !existingTTL.isAlive() {
+		delete(db.keyVal, key)
+		delete(db.keyTTL, key)
 		return status.NoSuchKey
 	}
 
-	val.ttl = ttl
-	db.keyVal[key] = val
+	db.keyTTL[key] = TTL(time.Now().Unix() + int64(ttl))
 	return status.OK
 }
 
@@ -23,42 +29,33 @@ func (db *DB) GetTTL(key Key) (TTL, status.Status) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	val, ok := db.keyVal[key]
-	if !ok {
-		return nil, status.NoSuchKey
-	}
-	if _, expired := val.ttl.(TTLExpired); expired {
-		return nil, status.NoSuchKey
+	if _, ok := db.keyVal[key]; !ok {
+		return TTL(0), status.NoSuchKey
 	}
 
-	return val.ttl, status.OK
+	if ttl, ok := db.keyTTL[key]; ok {
+		if !ttl.isAlive() {
+			return TTL(0), status.NoSuchKey
+		}
+		rem := int64(ttl) - time.Now().Unix()
+		return TTL(rem), status.OK
+	}
+	return TTL(0), status.NoTTL
 }
 
 func (db *DB) DelTTL(key Key) status.Status {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	val, ok := db.keyVal[key]
+	_, ok := db.keyVal[key]
 	if !ok {
 		return status.NoSuchKey
 	}
-	if _, expired := val.ttl.(TTLExpired); expired {
+	if ttl, ok := db.keyTTL[key]; ok && !ttl.isAlive() {
+		delete(db.keyVal, key)
+		delete(db.keyTTL, key)
 		return status.NoSuchKey
 	}
-
-	val.ttl = TTLNever{}
-	db.keyVal[key] = val
+	delete(db.keyTTL, key)
 	return status.OK
-}
-
-func (db *DB) ExistsTTL(key Key) bool {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	val, ok := db.keyVal[key]
-	if !ok {
-		return false
-	}
-	_, isTTL := val.ttl.(TTLSeconds)
-	return isTTL
 }
