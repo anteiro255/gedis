@@ -3,8 +3,8 @@ package server_test
 import (
 	"context"
 	"errors"
-	"net"
 	"testing"
+	"time"
 
 	"github.com/anteiro255/gedis/internal/db"
 	"github.com/anteiro255/gedis/internal/server"
@@ -21,38 +21,25 @@ func startTestServer(t *testing.T) string {
 	s := server.NewServer()
 	s.SetDB(database)
 
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("failed to listen: %v", err)
-	}
-	s.Listener = listener
-	addr := listener.Addr().String()
-
-	go func() {
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				return
-			}
-			c := server.Connection{
-				Conn: conn,
-				Db:   s.Db,
-			}
-			go c.Serve()
-		}
-	}()
-
+	go s.RunAt("127.0.0.1:0")
 	t.Cleanup(func() {
-		listener.Close()
+		s.Close()
 	})
 
-	return addr
+	for _ = range 50 {
+		if serverAddr := s.Addr(); serverAddr != "" {
+			return serverAddr
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("server failed to start listening")
+	return ""
 }
 
 func TestIntegration_SetAndGetMultiple(t *testing.T) {
-	addr := startTestServer(t)
+	serverAddr := startTestServer(t)
 
-	c, err := client.NewClient(addr)
+	c, err := client.NewClient(serverAddr)
 	if err != nil {
 		t.Fatalf("failed to connect: %v", err)
 	}
@@ -114,9 +101,9 @@ func TestIntegration_SetAndGetMultiple(t *testing.T) {
 }
 
 func TestIntegration_TTLOperations(t *testing.T) {
-	addr := startTestServer(t)
+	serverAddr := startTestServer(t)
 
-	c, err := client.NewClient(addr)
+	c, err := client.NewClient(serverAddr)
 	if err != nil {
 		t.Fatalf("failed to connect: %v", err)
 	}
