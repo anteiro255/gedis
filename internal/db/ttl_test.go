@@ -7,16 +7,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anteiro255/gedis/internal/config"
 	"github.com/anteiro255/gedis/internal/db"
 	"github.com/anteiro255/gedis/pkg/protocol/status"
 )
 
 func TestDB_TTLManagerEviction(t *testing.T) {
 	database := db.NewDB()
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
-	database.RunTTLManager(ctx)
+	database.RunTTLManager(ctx, config.Default())
 
 	key := db.Key([16]byte{9, 9, 9})
 	val := db.Val([]byte("expiring_value"))

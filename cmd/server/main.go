@@ -14,12 +14,14 @@ import (
 func main() {
 	log.InitLogger()
 
+	cfg := config.Load()
+
 	database := db.NewDB()
-	database.RunTTLManager(context.Background())
+	database.RunTTLManager(context.Background(), cfg)
 
 	s := server.NewServer()
 	s.SetDB(database)
-	s.SetConfig(config.Load())
+	s.SetConfig(cfg)
 
 	if err := s.RunAt("127.0.0.1:8080"); err != nil {
 		slog.Error("Error on server starting", "Error", err.Error())

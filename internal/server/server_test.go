@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anteiro255/gedis/internal/config"
 	"github.com/anteiro255/gedis/internal/db"
 	"github.com/anteiro255/gedis/internal/server"
 	"github.com/anteiro255/gedis/pkg/protocol"
@@ -17,7 +18,7 @@ func startTestServer(t *testing.T) string {
 	database := db.NewDB()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	database.RunTTLManager(ctx)
+	database.RunTTLManager(ctx, config.Default())
 
 	s := server.NewServer()
 	s.SetDB(database)
