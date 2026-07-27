@@ -103,7 +103,10 @@ func TestDB_ConcurrentAccess(t *testing.T) {
 				var k [16]byte
 				k[0] = byte(j % 10)
 				key := db.Key(k)
-				val := db.Val([]byte(fmt.Sprintf("val-%d-%d", gID, j)))
+
+				var buf []byte
+				buf = fmt.Appendf(buf, "val-%d-%d", gID, j)
+				val := db.Val(buf)
 
 				database.Set(key, val)
 				database.Get(key)

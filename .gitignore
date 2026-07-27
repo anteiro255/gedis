@@ -1,6 +1,5 @@
 /bin
 .env
-go.sum
 
 *.out
 *.test
