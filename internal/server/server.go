@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net"
@@ -36,7 +37,7 @@ func (s *Server) Addr() string {
 	return s.listener.Addr().String()
 }
 
-func (s *Server) RunAt(address string) error {
+func (s *Server) RunAt(ctx context.Context, address string) error {
 	slog.Info("Starting listening...")
 
 	var err error
@@ -44,6 +45,13 @@ func (s *Server) RunAt(address string) error {
 	if err != nil {
 		return err
 	}
+
+	go func() { // close the server when the context done
+		<-ctx.Done()
+		if err := s.Close(); err != nil {
+			slog.Error("Error on closing the server", "error", err)
+		}
+	}()
 
 	slog.Info("Starting accepting connections...")
 	for {

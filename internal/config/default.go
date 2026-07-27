@@ -3,15 +3,19 @@ package config
 import "time"
 
 const (
-	defaultReceiveTimeout              int64 = 3000 // GEDIS_RECEIVE_TIMEOUT
-	defaultSendTimeout                 int64 = 3000 // GEDIS_SEND_TIMEOUT
-	defaultTTLEntriesCheckingPerSecond uint  = 200  // GEDIS_ENTRIES_CHECKING_PER_SECOND
+	defaultReceiveTimeoutInMs          int64  = 3000
+	defaultSendTimeoutInMs             int64  = 3000
+	defaultTTLEntriesCheckingPerSecond uint   = 200
+	defaultSnapshotPath                string = "gedis.snap"
+	defaultSnapshotIntervalInSec       int64  = 300
 )
 
 func Default() (cfg *Config) {
 	return &Config{
-		receiveTimeout:              time.Duration(defaultReceiveTimeout) * time.Millisecond,
-		sendTimeout:                 time.Duration(defaultSendTimeout) * time.Millisecond,
+		receiveTimeout:              time.Duration(defaultReceiveTimeoutInMs) * time.Millisecond,
+		sendTimeout:                 time.Duration(defaultSendTimeoutInMs) * time.Millisecond,
 		ttlEntriesCheckingPerSecond: defaultTTLEntriesCheckingPerSecond,
+		snapshotPath:                defaultSnapshotPath,
+		snapshotInterval:            time.Duration(defaultSnapshotIntervalInSec) * time.Second,
 	}
 }

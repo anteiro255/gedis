@@ -7,6 +7,8 @@ import (
 	"github.com/anteiro255/gedis/internal/config"
 )
 
+// Call with "go" for not blocking:
+// go db.RunSnapshotter(ctx, cfg)
 func (db *DB) RunTTLManager(ctx context.Context, cfg *config.Config) {
 	go func() {
 		ticker := time.NewTicker(time.Second)

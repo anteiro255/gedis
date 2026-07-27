@@ -23,10 +23,7 @@ func startTestServer(t *testing.T) string {
 	s := server.NewServer()
 	s.SetDB(database)
 
-	go s.RunAt("127.0.0.1:0")
-	t.Cleanup(func() {
-		s.Close()
-	})
+	go s.RunAt(t.Context(), "127.0.0.1:0")
 
 	for range 50 {
 		if serverAddr := s.Addr(); serverAddr != "" {

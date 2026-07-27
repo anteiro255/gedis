@@ -12,6 +12,8 @@ type Config struct {
 	receiveTimeout              time.Duration // RECEIVE_TIMEOUT
 	sendTimeout                 time.Duration // SEND_TIMEOUT
 	ttlEntriesCheckingPerSecond uint          // GEDIS_ENTRIES_CHECKING_PER_SECOND
+	snapshotPath                string        // GEDIS_SNAPSHOT_PATH
+	snapshotInterval            time.Duration // GEDIS_SNAPSHOT_INTERVAL
 }
 
 func Load() (cfg *Config) {
@@ -19,6 +21,8 @@ func Load() (cfg *Config) {
 	cfg.loadReceiveTimeout()
 	cfg.loadSendTimeout()
 	cfg.loadTTLEntriesCheckingPerSecond()
+	cfg.loadSnapshotPath()
+	cfg.loadSnapshotInterval()
 	return
 }
 
@@ -33,8 +37,8 @@ func (c *Config) loadReceiveTimeout() {
 			}
 		}
 	}
-	slog.Warn("Failed to load the "+envKey+" environment variable", "current_receive_timeout", defaultReceiveTimeout)
-	c.receiveTimeout = time.Duration(defaultReceiveTimeout) * time.Millisecond
+	slog.Warn("Failed to load the "+envKey+" environment variable", "current_receive_timeout", defaultReceiveTimeoutInMs)
+	c.receiveTimeout = time.Duration(defaultReceiveTimeoutInMs) * time.Millisecond
 }
 
 func (c *Config) ReceiveTimeout() time.Duration {
@@ -52,8 +56,8 @@ func (c *Config) loadSendTimeout() {
 			}
 		}
 	}
-	slog.Warn("Failed to load the "+envKey+" environment variable", "current_send_timeout", defaultSendTimeout)
-	c.sendTimeout = time.Duration(defaultSendTimeout) * time.Millisecond
+	slog.Warn("Failed to load the "+envKey+" environment variable", "current_send_timeout", defaultSendTimeoutInMs)
+	c.sendTimeout = time.Duration(defaultSendTimeoutInMs) * time.Millisecond
 }
 
 func (c *Config) SendTimeout() time.Duration {
@@ -76,4 +80,38 @@ func (c *Config) loadTTLEntriesCheckingPerSecond() {
 
 func (c *Config) TTLEntriesCheckingPerSecond() uint {
 	return c.ttlEntriesCheckingPerSecond
+}
+
+// SnapshotPath
+func (c *Config) loadSnapshotPath() {
+	envKey := "GEDIS_SNAPSHOT_PATH"
+	if s := os.Getenv(envKey); s != "" {
+		c.snapshotPath = s
+		return
+	}
+	slog.Warn("Failed to load the "+envKey+" environment variable", "current_snapshot_path", defaultSnapshotPath)
+	c.snapshotPath = defaultSnapshotPath
+}
+
+func (c *Config) SnapshotPath() string {
+	return c.snapshotPath
+}
+
+// SnapshotInterval
+func (c *Config) loadSnapshotInterval() {
+	envKey := "GEDIS_SNAPSHOT_INTERVAL"
+	if s := os.Getenv(envKey); s != "" {
+		if n, err := strconv.Atoi(s); err == nil {
+			if n > 0 {
+				c.snapshotInterval = time.Duration(n) * time.Second
+				return
+			}
+		}
+	}
+	slog.Warn("Failed to load the "+envKey+" environment variable", "current_snapshot_interval_seconds", defaultSnapshotIntervalInSec)
+	c.snapshotInterval = time.Duration(defaultSnapshotIntervalInSec) * time.Second
+}
+
+func (c *Config) SnapshotInterval() time.Duration {
+	return c.snapshotInterval
 }
