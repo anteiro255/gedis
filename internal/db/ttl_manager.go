@@ -19,7 +19,7 @@ func (db *DB) RunTTLManager(ctx context.Context, cfg *config.Config) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				db.tickTTLs(cfg.TTLEntriesCheckingPerSecond())
+				db.tickTTLs(cfg.TTLEntryCheckPerSecond())
 			}
 		}
 	}()

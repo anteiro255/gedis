@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"os"
 	"testing"
 	"time"
 
@@ -11,33 +12,31 @@ import (
 	"github.com/anteiro255/gedis/internal/db"
 	"github.com/anteiro255/gedis/internal/server"
 	"github.com/anteiro255/gedis/pkg/protocol"
+	"github.com/anteiro255/gedis/pkg/protocol/status"
 	client "github.com/anteiro255/go-gedis"
 )
 
-func startTestServer(t *testing.T) string {
-	database := db.NewDB()
+const serverAddr = "127.0.0.1:8080"
+
+func TestMain(m *testing.M) {
 	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
+
+	database := db.NewDB()
 	database.RunTTLManager(ctx, config.Default())
 
 	s := server.NewServer()
 	s.SetDB(database)
 
-	go s.RunAt(t.Context(), "127.0.0.1:0")
+	go s.RunAt(ctx, serverAddr)
 
-	for range 50 {
-		if serverAddr := s.Addr(); serverAddr != "" {
-			return serverAddr
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	t.Fatal("server failed to start listening")
-	return ""
+	time.Sleep(500 * time.Millisecond)
+
+	code := m.Run()
+	cancel()
+	os.Exit(code)
 }
 
 func TestIntegration_SetAndGetMultiple(t *testing.T) {
-	serverAddr := startTestServer(t)
-
 	c, err := client.NewClient(serverAddr)
 	if err != nil {
 		t.Fatalf("failed to connect: %v", err)
@@ -100,8 +99,6 @@ func TestIntegration_SetAndGetMultiple(t *testing.T) {
 }
 
 func TestIntegration_TTLOperations(t *testing.T) {
-	serverAddr := startTestServer(t)
-
 	c, err := client.NewClient(serverAddr)
 	if err != nil {
 		t.Fatalf("failed to connect: %v", err)
@@ -149,8 +146,6 @@ func TestIntegration_TTLOperations(t *testing.T) {
 }
 
 func TestIntegration_ConcurrentClients(t *testing.T) {
-	serverAddr := startTestServer(t)
-
 	numClients := 10
 	errChan := make(chan error, numClients)
 
@@ -187,8 +182,6 @@ func TestIntegration_ConcurrentClients(t *testing.T) {
 }
 
 func TestServer_RawConnection_MalformedData(t *testing.T) {
-	serverAddr := startTestServer(t)
-
 	conn, err := net.Dial("tcp", serverAddr)
 	if err != nil {
 		t.Fatalf("failed to dial server: %v", err)
@@ -201,10 +194,9 @@ func TestServer_RawConnection_MalformedData(t *testing.T) {
 		t.Fatalf("failed to write garbage data: %v", err)
 	}
 
-	// Server should close connection gracefully on malformed header
 	buf := make([]byte, 100)
 	n, _ := conn.Read(buf)
-	if n > 0 {
+	if status.Status(n) != status.WrongInput {
 		// Server might respond with error response before closing connection
 		t.Logf("server sent response to garbage data: %v", buf[:n])
 	}

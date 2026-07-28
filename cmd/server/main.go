@@ -38,9 +38,9 @@ func main() {
 	s.SetDB(database)
 	s.SetConfig(cfg)
 
-	interceptor.SetInterceptorOn(cancel) // cancel the context on shutdowng
+	wg.Go(func() { interceptor.SetInterceptorOn(cancel) }) // cancel the context on shutdowng
 
-	if err := s.RunAt(ctx, "127.0.0.1:8080"); err != nil {
+	if err := s.RunAt(ctx, cfg.Address()); err != nil {
 		slog.Error("Error on server starting", "error", err.Error())
 		os.Exit(1)
 	}

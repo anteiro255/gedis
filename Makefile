@@ -2,7 +2,7 @@ BINARY_NAME=server
 BUILD_DIR=bin
 CMD_DIR=./cmd/server
 
-.PHONY: all build run test clean format help
+.PHONY: all build run test check clean format help
 all: format test build
 
 build:
@@ -18,6 +18,11 @@ test:
 	@echo "Running tests..."
 	go test -v -race ./internal/...
 
+check:
+	@echo "Checking all the project..."
+	go build $(CMD_DIR)
+	go test -v -race ./internal/...
+
 clean:
 	@echo "Cleaning up..."
 	rm -rf $(BUILD_DIR)
@@ -31,5 +36,6 @@ help:
 	@echo "  make build   - Build the go binary"
 	@echo "  make run     - Run the application (go run)"
 	@echo "  make test    - Run tests"
+	@echo "  make check   - Try to build the project and run tests"
 	@echo "  make clean   - Remove build artifacts"
 	@echo "  make format  - Format go code"

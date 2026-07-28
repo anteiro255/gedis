@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net"
+	"time"
 
 	"github.com/anteiro255/gedis/internal/config"
 	"github.com/anteiro255/gedis/internal/db"
@@ -30,15 +31,8 @@ func (s *Server) SetConfig(cfg *config.Config) {
 	s.config = cfg
 }
 
-func (s *Server) Addr() string {
-	if s.listener == nil {
-		return ""
-	}
-	return s.listener.Addr().String()
-}
-
 func (s *Server) RunAt(ctx context.Context, address string) error {
-	slog.Info("Starting listening...")
+	slog.Info("Starting listening...", "address", address)
 
 	var err error
 	s.listener, err = net.Listen("tcp", address)
@@ -65,7 +59,12 @@ func (s *Server) RunAt(ctx context.Context, address string) error {
 			continue
 		}
 
-		c := connection{
+		if tcpConn, ok := netConn.(*net.TCPConn); ok {
+			tcpConn.SetKeepAlive(true)
+			tcpConn.SetKeepAlivePeriod(30 * time.Second) // Probe every 30s
+		}
+
+		c := ConnectionWithClient{
 			conn:   netConn,
 			server: s,
 		}
