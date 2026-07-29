@@ -1,4 +1,4 @@
-package server_test
+package connection_test
 
 import (
 	"bytes"
@@ -194,5 +194,3 @@ func TestConnectionReadEOF(t *testing.T) {
 		t.Error("expected error reading from closed connection, got nil")
 	}
 }
-
-

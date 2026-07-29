@@ -1,2 +1,4 @@
-github.com/anteiro255/go-gedis v0.0.0-20260726100549-55615c3a2ebd h1:bp4oKpmHdYFNgBsRzGEVQIRQKYkinTtP23+l3+gPfbY=
-github.com/anteiro255/go-gedis v0.0.0-20260726100549-55615c3a2ebd/go.mod h1:BsKCMZbFjB58Zc65bt9fdyi6PsEV7WfuFZUU3JjHVf8=
+github.com/anteiro255/go-gedis v0.0.0-20260729105342-41fe293e9cee h1:H5oz1tDl8ThTjw+rvffF34DtNDYZ/OyvAYN/lVXCz8Q=
+github.com/anteiro255/go-gedis v0.0.0-20260729105342-41fe293e9cee/go.mod h1:nvq1cA1PBtniGAaFQ+X17hv9Bb1uFdQBUpBqqXcBrEs=
+github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
+github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=

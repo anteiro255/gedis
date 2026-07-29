@@ -1,6 +1,7 @@
 package db_test
 
 import (
+	"os"
 	"slices"
 	"testing"
 
@@ -42,4 +43,6 @@ func TestSnapshot(t *testing.T) {
 	if stat != status.NoSuchKey {
 		t.Error("db.Get()", "status", stat.Error(), "expected_status", status.NoSuchKey.Error(), "got", got)
 	}
+
+	os.Remove(snapshot_name)
 }

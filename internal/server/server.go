@@ -9,6 +9,7 @@ import (
 
 	"github.com/anteiro255/gedis/internal/config"
 	"github.com/anteiro255/gedis/internal/db"
+	"github.com/anteiro255/gedis/internal/server/connection"
 )
 
 type Server struct {
@@ -29,6 +30,15 @@ func (s *Server) SetDB(d *db.DB) {
 
 func (s *Server) SetConfig(cfg *config.Config) {
 	s.config = cfg
+}
+
+func (s *Server) Serve(conn net.Conn) {
+	if tcpConn, ok := conn.(*net.TCPConn); ok {
+		tcpConn.SetKeepAlive(true)
+		tcpConn.SetKeepAlivePeriod(30 * time.Second) // Probe every 30s
+	}
+
+	connection.New(conn, s.db, s.config).Serve()
 }
 
 func (s *Server) RunAt(ctx context.Context, address string) error {
@@ -58,16 +68,7 @@ func (s *Server) RunAt(ctx context.Context, address string) error {
 			continue
 		}
 
-		if tcpConn, ok := netConn.(*net.TCPConn); ok {
-			tcpConn.SetKeepAlive(true)
-			tcpConn.SetKeepAlivePeriod(30 * time.Second) // Probe every 30s
-		}
-
-		c := ConnectionWithClient{
-			conn:   netConn,
-			server: s,
-		}
-		go c.Serve()
+		go s.Serve(netConn)
 	}
 }
 

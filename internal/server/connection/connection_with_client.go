@@ -1,6 +1,7 @@
-package server
+package connection
 
 import (
+	"bufio"
 	"errors"
 	"io"
 	"log/slog"
@@ -8,24 +9,45 @@ import (
 	"time"
 
 	"github.com/anteiro255/gedis/internal/action"
+	"github.com/anteiro255/gedis/internal/config"
+	"github.com/anteiro255/gedis/internal/db"
 	"github.com/anteiro255/gedis/pkg/protocol"
 	"github.com/anteiro255/gedis/pkg/protocol/status"
 )
 
-type ConnectionWithClient struct {
-	conn   net.Conn
-	server *Server
+// A connection with a client
+// Every connection is performed in a separate goroutine
+type Conn struct {
+
+	// Actual connection
+	// Use only for deadlines
+	conn net.Conn
+
+	writer *bufio.Writer
+	reader *bufio.Reader
+	db     *db.DB
+	cfg    *config.Config
+}
+
+func New(conn net.Conn, db *db.DB, cfg *config.Config) *Conn {
+	return &Conn{
+		conn:   conn,
+		writer: bufio.NewWriter(conn),
+		reader: bufio.NewReader(conn),
+		db:     db,
+		cfg:    cfg,
+	}
 }
 
 // This function is made for keep alive TCP connections
 // The functions first tries to read the first byte of a request(hangs), when the request arrives
 // the function reads the first byte, set a deadline and read all the other bytes of the request
-func (conn *ConnectionWithClient) read() (*protocol.Request, error) {
-	receiveTimeout := conn.server.config.ReceiveTimeout()
+func (conn *Conn) read() (*protocol.Request, error) {
+	receiveTimeout := conn.cfg.ReceiveTimeout()
 
 	// Read the first byte
 	var firstByte [1]byte
-	_, err := io.ReadFull(conn.conn, firstByte[:])
+	_, err := io.ReadFull(conn.reader, firstByte[:])
 	if err != nil {
 		return nil, err
 	}
@@ -40,8 +62,8 @@ func (conn *ConnectionWithClient) read() (*protocol.Request, error) {
 	var headerAsBytes [protocol.RequestHeaderSize]byte
 	headerAsBytes[0] = firstByte[0]
 
-	// Read all the other bytes after the first
-	_, err = io.ReadFull(conn.conn, headerAsBytes[1:])
+	// Read all the other bytes of the header after the first
+	_, err = io.ReadFull(conn.reader, headerAsBytes[1:])
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +74,7 @@ func (conn *ConnectionWithClient) read() (*protocol.Request, error) {
 	// read the body
 	req.Body = make([]byte, req.Header.BodySize)
 	if req.Header.BodySize > 0 {
-		_, err = io.ReadFull(conn.conn, req.Body)
+		_, err = io.ReadFull(conn.reader, req.Body)
 		if err != nil {
 			return nil, err
 		}
@@ -61,8 +83,8 @@ func (conn *ConnectionWithClient) read() (*protocol.Request, error) {
 	return &req, nil
 }
 
-func (conn *ConnectionWithClient) writeResponse(resp *protocol.Response) error {
-	sendTimeout := conn.server.config.SendTimeout()
+func (conn *Conn) writeResponse(resp *protocol.Response) error {
+	sendTimeout := conn.cfg.SendTimeout()
 
 	respBytes := resp.ToBytes()
 
@@ -73,23 +95,17 @@ func (conn *ConnectionWithClient) writeResponse(resp *protocol.Response) error {
 		}
 	}
 
-	// write
-	totalWritten := 0
-	for totalWritten < len(respBytes) {
-		n, err := conn.conn.Write(respBytes[totalWritten:])
-		if err != nil {
-			return err
-		}
-		if n == 0 {
-			return io.ErrShortWrite
-		}
-		totalWritten += n
+	_, err := conn.writer.Write(respBytes)
+	if err != nil {
+		return err
 	}
-	return nil
+
+	return conn.writer.Flush()
 }
 
-func (conn *ConnectionWithClient) writeError(code status.Status) {
+func (conn *Conn) writeError(code status.Status) {
 	addr := conn.conn.RemoteAddr().String()
+
 	err := conn.writeResponse(protocol.NewResponse(code, nil))
 	if err != nil {
 		slog.Info("Failed to write to the connection", "addr", addr, "Error", err.Error())
@@ -97,7 +113,7 @@ func (conn *ConnectionWithClient) writeError(code status.Status) {
 	slog.Debug(code.Error())
 }
 
-func (conn *ConnectionWithClient) Serve() {
+func (conn *Conn) Serve() {
 	addr := conn.conn.RemoteAddr().String()
 
 	slog.Info("A client was connected", "addr", addr)
@@ -119,7 +135,7 @@ func (conn *ConnectionWithClient) Serve() {
 		}
 
 		action := action.Action{
-			DB:         conn.server.db,
+			DB:         conn.db,
 			ActionType: protocol.ActionType(req.Header.Operation),
 			Key:        req.Header.Key,
 			Body:       req.Body,

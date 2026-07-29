@@ -1,9 +1,11 @@
 /bin
 .env
 
+*.tmp
 *.out
 *.test
 *.prof
+*.snap
 
 /.zed
 /.vscode
