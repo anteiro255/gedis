@@ -11,7 +11,6 @@ import (
 	"github.com/anteiro255/gedis/internal/config"
 	"github.com/anteiro255/gedis/internal/db"
 	"github.com/anteiro255/gedis/internal/server"
-	"github.com/anteiro255/gedis/pkg/protocol"
 	"github.com/anteiro255/gedis/pkg/protocol/status"
 	client "github.com/anteiro255/go-gedis"
 )
@@ -43,10 +42,10 @@ func TestIntegration_SetAndGetMultiple(t *testing.T) {
 	}
 	defer c.Close()
 
-	key1 := [protocol.RequestKeySize]byte{1}
+	key1 := []byte{1}
 	val1 := []byte("val1")
 
-	key2 := [protocol.RequestKeySize]byte{2}
+	key2 := []byte{2}
 	val2 := []byte("val2")
 
 	// 1. Set key1
@@ -105,7 +104,7 @@ func TestIntegration_TTLOperations(t *testing.T) {
 	}
 	defer c.Close()
 
-	key := [protocol.RequestKeySize]byte{99}
+	key := []byte{99}
 	val := []byte("ttl-val")
 
 	err = c.Set(key, val)
@@ -158,7 +157,7 @@ func TestIntegration_ConcurrentClients(t *testing.T) {
 			}
 			defer c.Close()
 
-			key := [protocol.RequestKeySize]byte{byte(id)}
+			key := []byte{byte(id)}
 			val := []byte("concurrent_data")
 
 			if err := c.Set(key, val); err != nil {

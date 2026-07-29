@@ -53,7 +53,7 @@ func (c *Config) loadAddress() {
 		c.address = s
 		return
 	}
-	slog.Warn("Failed to load the "+envKey+" environment variable", "current_address", defaultAddress)
+	slog.Debug("Failed to load the "+envKey+" environment variable", "current_address", defaultAddress)
 	c.address = defaultAddress
 }
 
@@ -72,7 +72,7 @@ func (c *Config) loadTCPPingInterval() {
 			}
 		}
 	}
-	slog.Warn("Failed to load the "+envKey+" environment variable", "current_tcp_keep_alive_period", defaultTCPPingIntervalInMs)
+	slog.Debug("Failed to load the "+envKey+" environment variable", "current_tcp_keep_alive_period", defaultTCPPingIntervalInMs)
 	c.tcpPingInterval = time.Duration(defaultTCPPingIntervalInMs) * time.Millisecond
 }
 
@@ -91,7 +91,7 @@ func (c *Config) loadReceiveTimeout() {
 			}
 		}
 	}
-	slog.Warn("Failed to load the "+envKey+" environment variable", "current_receive_timeout", defaultReceiveTimeoutInMs)
+	slog.Debug("Failed to load the "+envKey+" environment variable", "current_receive_timeout", defaultReceiveTimeoutInMs)
 	c.receiveTimeout = time.Duration(defaultReceiveTimeoutInMs) * time.Millisecond
 }
 
@@ -110,7 +110,7 @@ func (c *Config) loadSendTimeout() {
 			}
 		}
 	}
-	slog.Warn("Failed to load the "+envKey+" environment variable", "current_send_timeout", defaultSendTimeoutInMs)
+	slog.Debug("Failed to load the "+envKey+" environment variable", "current_send_timeout", defaultSendTimeoutInMs)
 	c.sendTimeout = time.Duration(defaultSendTimeoutInMs) * time.Millisecond
 }
 
@@ -129,7 +129,7 @@ func (c *Config) loadTTLEntryCheckPerSecond() {
 			}
 		}
 	}
-	slog.Warn("Failed to load the "+envKey+" environment variable", "current_ttl_entries_checking_per_second", defaultTTLEntryCheckPerSecond)
+	slog.Debug("Failed to load the "+envKey+" environment variable", "current_ttl_entries_checking_per_second", defaultTTLEntryCheckPerSecond)
 	c.ttlEntryCheckPerSecond = defaultTTLEntryCheckPerSecond
 }
 
@@ -144,7 +144,7 @@ func (c *Config) loadSnapshotPath() {
 		c.snapshotPath = s
 		return
 	}
-	slog.Warn("Failed to load the "+envKey+" environment variable", "current_snapshot_path", defaultSnapshotPath)
+	slog.Debug("Failed to load the "+envKey+" environment variable", "current_snapshot_path", defaultSnapshotPath)
 	c.snapshotPath = defaultSnapshotPath
 }
 
@@ -163,7 +163,7 @@ func (c *Config) loadSnapshotInterval() {
 			}
 		}
 	}
-	slog.Warn("Failed to load the "+envKey+" environment variable", "current_snapshot_interval_seconds", defaultSnapshotIntervalInSec)
+	slog.Debug("Failed to load the "+envKey+" environment variable", "current_snapshot_interval_seconds", defaultSnapshotIntervalInSec)
 	c.snapshotInterval = time.Duration(defaultSnapshotIntervalInSec) * time.Second
 }
 

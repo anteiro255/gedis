@@ -32,7 +32,7 @@ func (s *Server) SetConfig(cfg *config.Config) {
 }
 
 func (s *Server) RunAt(ctx context.Context, address string) error {
-	slog.Info("Starting listening...", "address", address)
+	slog.Info("Run the server", "address", address)
 
 	var err error
 	s.listener, err = net.Listen("tcp", address)
@@ -47,12 +47,11 @@ func (s *Server) RunAt(ctx context.Context, address string) error {
 		}
 	}()
 
-	slog.Info("Starting accepting connections...")
 	for {
 		netConn, err := s.listener.Accept()
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) {
-				slog.Info("Listener closed, stopping accept loop")
+				slog.Info("Close the server")
 				return nil
 			}
 			slog.Error(err.Error())

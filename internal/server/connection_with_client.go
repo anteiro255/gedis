@@ -5,7 +5,6 @@ import (
 	"io"
 	"log/slog"
 	"net"
-	"strconv"
 	"time"
 
 	"github.com/anteiro255/gedis/internal/action"
@@ -95,38 +94,27 @@ func (conn *ConnectionWithClient) writeError(code status.Status) {
 	if err != nil {
 		slog.Info("Failed to write to the connection", "addr", addr, "Error", err.Error())
 	}
-	switch code {
-	case status.NoSuchKey:
-		slog.Info("The user submitted not existing key", "addr", addr)
-	case status.WrongInput:
-		slog.Info("The user submitted wrong input", "addr", addr)
-	case status.InternalError:
-		slog.Info("Internal error occured during the serving the user", "addr", addr)
-	case status.DeadlineExceeded:
-		slog.Info("Deadline exceeded", "addr", addr)
-	default:
-		slog.Error("Wrong error code value was passed to the handlers.error() function, the code value: " + strconv.Itoa(int(code)))
-	}
+	slog.Debug(code.Error())
 }
 
 func (conn *ConnectionWithClient) Serve() {
 	addr := conn.conn.RemoteAddr().String()
 
-	slog.Info("A TCP connection was accepted", "addr", addr)
+	slog.Info("A client was connected", "addr", addr)
 
 	for {
 		req, err := conn.read()
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-				slog.Info("Connection closed by client", "addr", addr)
+				slog.Debug("Connection closed by client", "addr", addr)
 				break
 			}
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-				slog.Info("Connection read timeout", "addr", addr)
+				slog.Debug("Connection read timeout", "addr", addr)
 				conn.writeError(status.DeadlineExceeded)
 				break
 			}
-			slog.Info(err.Error(), "addr", addr)
+			slog.Debug(err.Error(), "addr", addr)
 			break
 		}
 
@@ -144,11 +132,11 @@ func (conn *ConnectionWithClient) Serve() {
 		}
 
 		if err := conn.writeResponse(protocol.NewResponse(stat, body)); err != nil {
-			slog.Error("Failed to write response", "addr", addr, "error", err.Error())
+			slog.Debug("Failed to write response", "addr", addr, "error", err.Error())
 			break
 		}
 
-		slog.Info("The request was processed successfully", "addr", addr, "status", stat.Error(), "operation", req.Header.Operation, "key", req.Header.Key)
+		slog.Debug("The request was processed successfully", "addr", addr, "status", stat.Error(), "operation", req.Header.Operation, "key", req.Header.Key)
 	}
-	slog.Info("The TCP connection was closed", "addr", addr)
+	slog.Debug("The client was disconnected", "addr", addr)
 }
