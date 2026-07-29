@@ -8,6 +8,7 @@ import (
 
 	"github.com/anteiro255/gedis/internal/config"
 	"github.com/anteiro255/gedis/pkg/protocol"
+	"github.com/anteiro255/gedis/pkg/protocol/action"
 	"github.com/anteiro255/gedis/pkg/protocol/status"
 )
 
@@ -66,7 +67,7 @@ func TestConnectionReadRequest(t *testing.T) {
 
 	key := [protocol.RequestKeySize]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
 	body := []byte("test_body_value")
-	req := protocol.NewRequest(protocol.Set, key, body)
+	req := protocol.NewRequest(action.Set, key, body)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -77,8 +78,8 @@ func TestConnectionReadRequest(t *testing.T) {
 			t.Errorf("read() error: %v", err)
 			return
 		}
-		if gotReq.Header.Operation != uint8(protocol.Set) {
-			t.Errorf("expected operation %d, got %d", protocol.Set, gotReq.Header.Operation)
+		if gotReq.Header.Operation != uint8(action.Set) {
+			t.Errorf("expected operation %d, got %d", action.Set, gotReq.Header.Operation)
 		}
 		if gotReq.Header.Key != key {
 			t.Errorf("key mismatch")
@@ -141,7 +142,7 @@ func TestConnectionReadWriteRoundTrip(t *testing.T) {
 
 	key := [protocol.RequestKeySize]byte{0xFF, 0xEE, 0xDD}
 	body := []byte("roundtrip_data")
-	req := protocol.NewRequest(protocol.Get, key, body)
+	req := protocol.NewRequest(action.Get, key, body)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -152,8 +153,8 @@ func TestConnectionReadWriteRoundTrip(t *testing.T) {
 			t.Errorf("read() error: %v", err)
 			return
 		}
-		if gotReq.Header.Operation != uint8(protocol.Get) {
-			t.Errorf("expected operation %d, got %d", protocol.Get, gotReq.Header.Operation)
+		if gotReq.Header.Operation != uint8(action.Get) {
+			t.Errorf("expected operation %d, got %d", action.Get, gotReq.Header.Operation)
 		}
 		err = conn.writeResponse(protocol.NewResponse(status.NoSuchKey, nil))
 		if err != nil {

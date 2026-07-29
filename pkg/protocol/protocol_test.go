@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	"github.com/anteiro255/gedis/pkg/protocol"
+	"github.com/anteiro255/gedis/pkg/protocol/action"
 	"github.com/anteiro255/gedis/pkg/protocol/status"
 )
 
 func TestRequestHeader_RoundTrip(t *testing.T) {
 	key := [protocol.RequestKeySize]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
 	original := protocol.RequestHeader{
-		Operation: uint8(protocol.Set),
+		Operation: uint8(action.Set),
 		Key:       key,
 		BodySize:  1024,
 	}
@@ -34,7 +35,7 @@ func TestRequest_RoundTrip(t *testing.T) {
 	key := [protocol.RequestKeySize]byte{0xAA, 0xBB}
 	body := []byte("hello gedis protocol")
 
-	req := protocol.NewRequest(protocol.Set, key, body)
+	req := protocol.NewRequest(action.Set, key, body)
 	if req.Header.BodySize != uint32(len(body)) {
 		t.Fatalf("expected Header.BodySize=%d, got %d", len(body), req.Header.BodySize)
 	}
@@ -50,8 +51,8 @@ func TestRequest_RoundTrip(t *testing.T) {
 		t.Fatalf("unexpected error parsing request: %v", err)
 	}
 
-	if parsed.Header.Operation != uint8(protocol.Set) {
-		t.Errorf("Operation mismatch: got %d, want %d", parsed.Header.Operation, protocol.Set)
+	if parsed.Header.Operation != uint8(action.Set) {
+		t.Errorf("Operation mismatch: got %d, want %d", parsed.Header.Operation, action.Set)
 	}
 	if parsed.Header.Key != key {
 		t.Errorf("Key mismatch: got %v, want %v", parsed.Header.Key, key)

@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"github.com/anteiro255/gedis/pkg/protocol/action"
 	"github.com/anteiro255/gedis/pkg/protocol/status"
 )
 
@@ -12,7 +13,7 @@ type Request struct {
 	Header *RequestHeader
 }
 
-func NewRequest(ActionType ActionType, Key [RequestKeySize]byte, Body []byte) *Request {
+func NewRequest(ActionType action.Action, Key [RequestKeySize]byte, Body []byte) *Request {
 	return &Request{
 		Header: &RequestHeader{
 			Operation: uint8(ActionType),
@@ -41,15 +42,3 @@ func (r *Request) ToBytes() []byte {
 	copy(b[RequestHeaderSize:], r.Body)
 	return b
 }
-
-type ActionType uint8
-
-const (
-	Set ActionType = iota
-	Get
-	Del
-	Exist
-	TTL_Set
-	TTL_Get
-	TTL_Del
-)

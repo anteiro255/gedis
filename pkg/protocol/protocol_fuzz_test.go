@@ -4,12 +4,13 @@ import (
 	"testing"
 
 	"github.com/anteiro255/gedis/pkg/protocol"
+	"github.com/anteiro255/gedis/pkg/protocol/action"
 )
 
 func FuzzNewRequestFromBytes(f *testing.F) {
 	key := [protocol.RequestKeySize]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
 	body := []byte("fuzz_body")
-	req := protocol.NewRequest(protocol.Set, key, body)
+	req := protocol.NewRequest(action.Set, key, body)
 	f.Add(req.ToBytes())
 
 	f.Fuzz(func(t *testing.T, data []byte) {

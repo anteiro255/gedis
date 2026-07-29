@@ -4,12 +4,13 @@ import (
 	"testing"
 
 	"github.com/anteiro255/gedis/pkg/protocol"
+	"github.com/anteiro255/gedis/pkg/protocol/action"
 	"github.com/anteiro255/gedis/pkg/protocol/status"
 )
 
 func BenchmarkRequestHeaderToBytes(b *testing.B) {
 	h := &protocol.RequestHeader{
-		Operation: uint8(protocol.Set),
+		Operation: uint8(action.Set),
 		Key:       [protocol.RequestKeySize]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
 		BodySize:  1024,
 	}
@@ -23,7 +24,7 @@ func BenchmarkRequestHeaderToBytes(b *testing.B) {
 
 func BenchmarkRequestHeaderFromBytes(b *testing.B) {
 	h := &protocol.RequestHeader{
-		Operation: uint8(protocol.Set),
+		Operation: uint8(action.Set),
 		Key:       [protocol.RequestKeySize]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
 		BodySize:  1024,
 	}
@@ -39,7 +40,7 @@ func BenchmarkRequestHeaderFromBytes(b *testing.B) {
 func BenchmarkRequestToBytes(b *testing.B) {
 	key := [protocol.RequestKeySize]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
 	body := make([]byte, 1024)
-	req := protocol.NewRequest(protocol.Set, key, body)
+	req := protocol.NewRequest(action.Set, key, body)
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -51,7 +52,7 @@ func BenchmarkRequestToBytes(b *testing.B) {
 func BenchmarkRequestFromBytes(b *testing.B) {
 	key := [protocol.RequestKeySize]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
 	body := make([]byte, 1024)
-	req := protocol.NewRequest(protocol.Set, key, body)
+	req := protocol.NewRequest(action.Set, key, body)
 	raw := req.ToBytes()
 
 	b.ReportAllocs()
@@ -118,7 +119,7 @@ func BenchmarkNewRequest(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		protocol.NewRequest(protocol.Set, key, body)
+		protocol.NewRequest(action.Set, key, body)
 	}
 }
 

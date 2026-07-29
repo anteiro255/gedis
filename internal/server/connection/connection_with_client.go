@@ -8,10 +8,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/anteiro255/gedis/internal/action"
 	"github.com/anteiro255/gedis/internal/config"
 	"github.com/anteiro255/gedis/internal/db"
+	dbaction "github.com/anteiro255/gedis/internal/db/action"
 	"github.com/anteiro255/gedis/pkg/protocol"
+	protocolaction "github.com/anteiro255/gedis/pkg/protocol/action"
 	"github.com/anteiro255/gedis/pkg/protocol/status"
 )
 
@@ -134,9 +135,9 @@ func (conn *Conn) Serve() {
 			break
 		}
 
-		action := action.Action{
+		action := dbaction.Action{
 			DB:         conn.db,
-			ActionType: protocol.ActionType(req.Header.Operation),
+			ActionType: protocolaction.Action(req.Header.Operation),
 			Key:        req.Header.Key,
 			Body:       req.Body,
 		}
