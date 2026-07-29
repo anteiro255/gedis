@@ -23,23 +23,14 @@ func NewResponse(s status.Status, body []byte) *Response {
 	}
 }
 
-func (r *Response) ToBytes() []byte {
-	headerBytes := r.Header.ToBytes()
-
-	b := make([]byte, 0, ResponseHeaderSize+len(r.Body))
-	b = append(b, headerBytes[:]...)
-	b = append(b, r.Body...)
-
-	return b
-}
-
 func NewResponseFromBytes(in []byte) (*Response, error) {
 	if len(in) < ResponseHeaderSize {
 		return nil, status.WrongInput
 	}
 
 	var r Response
-	r.Header = NewResponseHeaderFromBytes([ResponseHeaderSize]byte(in[:ResponseHeaderSize]))
+	bytes := [ResponseHeaderSize]byte(in[:ResponseHeaderSize])
+	r.Header = NewResponseHeaderFromBytes(&bytes)
 
 	if len(in) < ResponseHeaderSize+int(r.Header.BodySize) {
 		return nil, status.WrongInput

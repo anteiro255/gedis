@@ -18,7 +18,7 @@ func TestRequestHeader_RoundTrip(t *testing.T) {
 	}
 
 	bytesData := original.ToBytes()
-	parsed := protocol.NewRequestHeaderFromBytes(bytesData)
+	parsed := protocol.NewRequestHeaderFromBytes(&bytesData)
 
 	if parsed.Operation != original.Operation {
 		t.Errorf("Operation mismatch: got %d, want %d", parsed.Operation, original.Operation)
@@ -31,45 +31,6 @@ func TestRequestHeader_RoundTrip(t *testing.T) {
 	}
 }
 
-func TestRequest_RoundTrip(t *testing.T) {
-	key := [protocol.RequestKeySize]byte{0xAA, 0xBB}
-	body := []byte("hello gedis protocol")
-
-	req := protocol.NewRequest(action.Set, key, body)
-	if req.Header.BodySize != uint32(len(body)) {
-		t.Fatalf("expected Header.BodySize=%d, got %d", len(body), req.Header.BodySize)
-	}
-
-	rawBytes := req.ToBytes()
-	expectedLen := protocol.RequestHeaderSize + len(body)
-	if len(rawBytes) != expectedLen {
-		t.Fatalf("expected raw bytes length %d, got %d", expectedLen, len(rawBytes))
-	}
-
-	parsed, err := protocol.NewRequestFromBytes(rawBytes)
-	if err != nil {
-		t.Fatalf("unexpected error parsing request: %v", err)
-	}
-
-	if parsed.Header.Operation != uint8(action.Set) {
-		t.Errorf("Operation mismatch: got %d, want %d", parsed.Header.Operation, action.Set)
-	}
-	if parsed.Header.Key != key {
-		t.Errorf("Key mismatch: got %v, want %v", parsed.Header.Key, key)
-	}
-	if !bytes.Equal(parsed.Body, body) {
-		t.Errorf("Body mismatch: got %q, want %q", string(parsed.Body), string(body))
-	}
-}
-
-func TestRequest_NewFromBytes_ShortInput(t *testing.T) {
-	shortData := make([]byte, protocol.RequestHeaderSize-1)
-	_, err := protocol.NewRequestFromBytes(shortData)
-	if err != status.WrongInput {
-		t.Errorf("expected status.WrongInput for short request header, got %v", err)
-	}
-}
-
 func TestResponseHeader_RoundTrip(t *testing.T) {
 	original := protocol.ResponseHeader{
 		Status:   status.KeyAlreadyExists,
@@ -77,7 +38,7 @@ func TestResponseHeader_RoundTrip(t *testing.T) {
 	}
 
 	bytesData := original.ToBytes()
-	parsed := protocol.NewResponseHeaderFromBytes(bytesData)
+	parsed := protocol.NewResponseHeaderFromBytes(&bytesData)
 
 	if parsed.Status != original.Status {
 		t.Errorf("Status mismatch: got %v, want %v", parsed.Status, original.Status)
@@ -91,7 +52,10 @@ func TestResponse_RoundTrip(t *testing.T) {
 	body := []byte("response payload")
 	resp := protocol.NewResponse(status.OK, body)
 
-	rawBytes := resp.ToBytes()
+	headerBytes := resp.Header.ToBytes()
+	rawBytes := make([]byte, protocol.ResponseHeaderSize+len(resp.Body))
+	copy(rawBytes, headerBytes[:])
+	copy(rawBytes[protocol.ResponseHeaderSize:], resp.Body)
 	expectedLen := protocol.ResponseHeaderSize + len(body)
 	if len(rawBytes) != expectedLen {
 		t.Fatalf("expected raw bytes length %d, got %d", expectedLen, len(rawBytes))
@@ -121,8 +85,10 @@ func TestResponse_NewFromBytes_Errors(t *testing.T) {
 
 	t.Run("truncated body", func(t *testing.T) {
 		resp := protocol.NewResponse(status.OK, []byte("long body content"))
-		raw := resp.ToBytes()
-		// Truncate body by 2 bytes
+		headerBytes := resp.Header.ToBytes()
+		raw := make([]byte, protocol.ResponseHeaderSize+len(resp.Body))
+		copy(raw, headerBytes[:])
+		copy(raw[protocol.ResponseHeaderSize:], resp.Body)
 		truncated := raw[:len(raw)-2]
 
 		_, err := protocol.NewResponseFromBytes(truncated)

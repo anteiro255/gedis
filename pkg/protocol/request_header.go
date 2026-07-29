@@ -1,6 +1,9 @@
 package protocol
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"unsafe"
+)
 
 // Representation the RequestHeader structure in protocol:
 // Key:       [16]byte;  16bytes
@@ -12,7 +15,7 @@ type RequestHeader struct {
 	Operation uint8
 }
 
-func NewRequestHeaderFromBytes(in [RequestHeaderSize]byte) *RequestHeader {
+func NewRequestHeaderFromBytes(in *[RequestHeaderSize]byte) *RequestHeader {
 	var h RequestHeader
 
 	h.Operation = in[0]
@@ -22,6 +25,10 @@ func NewRequestHeaderFromBytes(in [RequestHeaderSize]byte) *RequestHeader {
 	h.BodySize = binary.BigEndian.Uint32(in[RequestOperationTypeSize+RequestKeySize : RequestHeaderSize])
 
 	return &h
+}
+
+func BytesAsHeader(in *[RequestHeaderSize]byte) *RequestHeader {
+	return (*RequestHeader)(unsafe.Pointer(&in[0]))
 }
 
 func (h *RequestHeader) ToBytes() [RequestHeaderSize]byte {
@@ -37,4 +44,8 @@ func (h *RequestHeader) ToBytes() [RequestHeaderSize]byte {
 	offset += BodySizeSize
 
 	return b
+}
+
+func (h *RequestHeader) Asbytes(in *[RequestHeaderSize]byte) []byte {
+	return unsafe.Slice((*byte)(unsafe.Pointer(in)), uintptr(RequestHeaderSize))
 }

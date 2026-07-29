@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"encoding/binary"
+	"unsafe"
 
 	"github.com/anteiro255/gedis/pkg/protocol/status"
 )
@@ -14,13 +15,17 @@ type ResponseHeader struct {
 	Status   status.Status
 }
 
-func NewResponseHeaderFromBytes(in [ResponseHeaderSize]byte) ResponseHeader {
+func NewResponseHeaderFromBytes(bytes *[ResponseHeaderSize]byte) ResponseHeader {
 	var h ResponseHeader
 
-	h.Status = status.Status(in[0])
-	h.BodySize = binary.BigEndian.Uint32(in[ResponseStatusSize : ResponseStatusSize+BodySizeSize])
+	h.Status = status.Status(bytes[0])
+	h.BodySize = binary.BigEndian.Uint32(bytes[ResponseStatusSize : ResponseStatusSize+BodySizeSize])
 
 	return h
+}
+
+func BytesAsResponseHeader(bytes *[ResponseHeaderSize]byte) *ResponseHeader {
+	return (*ResponseHeader)(unsafe.Pointer(&bytes[0]))
 }
 
 func (h *ResponseHeader) ToBytes() [ResponseHeaderSize]byte {
@@ -33,4 +38,8 @@ func (h *ResponseHeader) ToBytes() [ResponseHeaderSize]byte {
 	offset += BodySizeSize
 
 	return b
+}
+
+func (h *ResponseHeader) Asbytes() []byte {
+	return unsafe.Slice((*byte)(unsafe.Pointer(h)), uintptr(ResponseHeaderSize))
 }

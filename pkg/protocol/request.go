@@ -2,7 +2,6 @@ package protocol
 
 import (
 	"github.com/anteiro255/gedis/pkg/protocol/action"
-	"github.com/anteiro255/gedis/pkg/protocol/status"
 )
 
 // Representation the Request structure in protocol:
@@ -13,32 +12,13 @@ type Request struct {
 	Header *RequestHeader
 }
 
-func NewRequest(ActionType action.Action, Key [RequestKeySize]byte, Body []byte) *Request {
+func NewRequest(action action.Action, key [RequestKeySize]byte, body []byte) *Request {
 	return &Request{
 		Header: &RequestHeader{
-			Operation: uint8(ActionType),
-			Key:       Key,
-			BodySize:  uint32(len(Body)),
+			Operation: uint8(action),
+			Key:       key,
+			BodySize:  uint32(len(body)),
 		},
-		Body: Body,
+		Body: body,
 	}
-}
-
-func NewRequestFromBytes(in []byte) (*Request, error) {
-	var req Request
-	if len(in) < RequestHeaderSize {
-		return nil, status.WrongInput
-	}
-	req.Header = NewRequestHeaderFromBytes([RequestHeaderSize]byte(in[:RequestHeaderSize]))
-	req.Body = in[RequestHeaderSize:]
-	return &req, nil
-}
-
-func (r *Request) ToBytes() []byte {
-	headerBytes := r.Header.ToBytes()
-	b := make([]byte, RequestHeaderSize+len(r.Body))
-
-	copy(b, headerBytes[:])
-	copy(b[RequestHeaderSize:], r.Body)
-	return b
 }

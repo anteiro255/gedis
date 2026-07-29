@@ -70,7 +70,7 @@ func (conn *Conn) read() (*protocol.Request, error) {
 	}
 
 	var req protocol.Request
-	req.Header = protocol.NewRequestHeaderFromBytes(headerAsBytes)
+	req.Header = protocol.NewRequestHeaderFromBytes(&headerAsBytes)
 
 	// read the body
 	req.Body = make([]byte, req.Header.BodySize)
@@ -84,10 +84,8 @@ func (conn *Conn) read() (*protocol.Request, error) {
 	return &req, nil
 }
 
-func (conn *Conn) writeResponse(resp *protocol.Response) error {
+func (conn *Conn) writeResponse(res *protocol.Response) error {
 	sendTimeout := conn.cfg.SendTimeout()
-
-	respBytes := resp.ToBytes()
 
 	// set a deadline before the reading
 	if sendTimeout != 0 {
@@ -96,7 +94,12 @@ func (conn *Conn) writeResponse(resp *protocol.Response) error {
 		}
 	}
 
-	_, err := conn.writer.Write(respBytes)
+	_, err := conn.writer.Write(res.Header.Asbytes())
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.writer.Write(res.Body)
 	if err != nil {
 		return err
 	}
