@@ -13,6 +13,13 @@ type Config struct {
 	// address at which the server will be run
 	address string // GEDIS_ADDRESS
 
+	// verbosity is the level of logs:
+	//     0: Error
+	//     1: Warn, Error
+	//     2: Info, Warn, Error
+	//     3: Debug, Info, Warn, Error
+	verbosity uint8 // GEDIS_VERBOSITY
+
 	// OS-level probing on idle TCP sockets
 	// time of the gaps between OS-level TCP pings to a client
 	tcpPingInterval time.Duration // GEDIS_TCP_PING_INTERVAL
@@ -32,6 +39,11 @@ type Config struct {
 	// time of the gaps between snapsot savings
 	snapshotInterval time.Duration // GEDIS_SNAPSHOT_INTERVAL
 
+}
+
+func PreLoad() (cfg *Config) {
+	cfg.loadVerbosity()
+	return
 }
 
 func Load() (cfg *Config) {
@@ -59,6 +71,25 @@ func (c *Config) loadAddress() {
 
 func (c *Config) Address() string {
 	return c.address
+}
+
+// verbosity
+func (c *Config) loadVerbosity() {
+	envKey := "GEDIS_VERBOSITY"
+	if s := os.Getenv(envKey); s != "" {
+		if n, err := strconv.Atoi(s); err == nil {
+			if n >= int(minVerbosity) && n <= int(maxVerbosity) {
+				c.verbosity = uint8(n)
+				return
+			}
+		}
+	}
+	slog.Debug("Failed to load the "+envKey+" environment variable", "current_verbosity", defaultVerbosity)
+	c.verbosity = defaultVerbosity
+}
+
+func (c *Config) Verbosity() uint8 {
+	return c.verbosity
 }
 
 // tcpPingInterval

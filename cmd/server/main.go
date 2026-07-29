@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	log.InitLogger()
+	log.InitLogger(config.PreLoad())
 
 	cfg := config.Load()
 

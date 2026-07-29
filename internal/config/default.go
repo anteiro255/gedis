@@ -4,6 +4,7 @@ import "time"
 
 const (
 	defaultAddress                string = ":8080"
+	defaultVerbosity              uint8  = 2
 	defaultTCPPingIntervalInMs    int64  = 30000
 	defaultReceiveTimeoutInMs     int64  = 3000
 	defaultSendTimeoutInMs        int64  = 3000
@@ -15,6 +16,7 @@ const (
 func Default() (cfg *Config) {
 	return &Config{
 		address:                defaultAddress,
+		verbosity:              defaultVerbosity,
 		tcpPingInterval:        time.Duration(defaultTCPPingIntervalInMs) * time.Millisecond,
 		receiveTimeout:         time.Duration(defaultReceiveTimeoutInMs) * time.Millisecond,
 		sendTimeout:            time.Duration(defaultSendTimeoutInMs) * time.Millisecond,
