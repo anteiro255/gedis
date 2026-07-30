@@ -42,6 +42,7 @@ type Config struct {
 }
 
 func PreLoad() (cfg *Config) {
+	cfg = &Config{}
 	cfg.loadVerbosity()
 	return
 }

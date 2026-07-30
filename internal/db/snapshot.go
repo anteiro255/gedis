@@ -17,15 +17,27 @@ func (db *DB) SaveSnapshot(path string) error {
 		return err
 	}
 
-	db.mu.RLock()
+	keyVal := make(map[Key]Val)
+	keyTTL := make(map[Key]TTL)
+	for i := range db.shards {
+		db.shards[i].mu.RLock()
+		for key, value := range db.shards[i].keyVal {
+			keyVal[key] = value
+		}
+		for key, ttl := range db.shards[i].keyTTL {
+			keyTTL[key] = ttl
+		}
+	}
+	for i := range db.shards {
+		db.shards[i].mu.RUnlock()
+	}
 	err = gob.NewEncoder(f).Encode(struct {
 		KeyVal map[Key]Val
 		KeyTTL map[Key]TTL
 	}{
-		KeyVal: db.keyVal,
-		KeyTTL: db.keyTTL,
+		KeyVal: keyVal,
+		KeyTTL: keyTTL,
 	})
-	db.mu.RUnlock()
 
 	if err != nil {
 		f.Close()
@@ -60,10 +72,22 @@ func (db *DB) LoadSnapshot(path string) error {
 		return err
 	}
 
-	db.mu.Lock()
-	db.keyVal = data.KeyVal
-	db.keyTTL = data.KeyTTL
-	db.mu.Unlock()
+	for i := range db.shards {
+		db.shards[i].mu.Lock()
+		db.shards[i].keyVal = make(map[Key]Val)
+		db.shards[i].keyTTL = make(map[Key]TTL)
+	}
+	for key, value := range data.KeyVal {
+		s := db.shard(key)
+		s.keyVal[key] = value
+	}
+	for key, ttl := range data.KeyTTL {
+		s := db.shard(key)
+		s.keyTTL[key] = ttl
+	}
+	for i := range db.shards {
+		db.shards[i].mu.Unlock()
+	}
 
 	return nil
 }

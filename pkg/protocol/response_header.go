@@ -2,7 +2,6 @@ package protocol
 
 import (
 	"encoding/binary"
-	"unsafe"
 
 	"github.com/anteiro255/gedis/pkg/protocol/status"
 )
@@ -24,22 +23,20 @@ func NewResponseHeaderFromBytes(bytes *[ResponseHeaderSize]byte) ResponseHeader 
 	return h
 }
 
-func BytesAsResponseHeader(bytes *[ResponseHeaderSize]byte) *ResponseHeader {
-	return (*ResponseHeader)(unsafe.Pointer(&bytes[0]))
+func (h *ResponseHeader) ToBytes() *[ResponseHeaderSize]byte {
+	var b [ResponseHeaderSize]byte
+	h.MarshalTo(b[:])
+	return &b
 }
 
-func (h *ResponseHeader) ToBytes() [ResponseHeaderSize]byte {
-	var b [ResponseHeaderSize]byte
+// MarshalTo serializes the header into caller-owned storage.
+func (h *ResponseHeader) MarshalTo(b []byte) {
+	if len(b) < ResponseHeaderSize {
+		return
+	}
 
 	b[0] = byte(h.Status)
-	offset := uint32(ResponseStatusSize)
+	offset := ResponseStatusSize
 
 	binary.BigEndian.PutUint32(b[offset:offset+BodySizeSize], h.BodySize)
-	offset += BodySizeSize
-
-	return b
-}
-
-func (h *ResponseHeader) Asbytes() []byte {
-	return unsafe.Slice((*byte)(unsafe.Pointer(h)), uintptr(ResponseHeaderSize))
 }

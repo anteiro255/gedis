@@ -11,6 +11,7 @@ import (
 	"github.com/anteiro255/gedis/internal/config"
 	"github.com/anteiro255/gedis/internal/db"
 	"github.com/anteiro255/gedis/internal/server"
+	"github.com/anteiro255/gedis/pkg/protocol"
 	"github.com/anteiro255/gedis/pkg/protocol/status"
 	client "github.com/anteiro255/go-gedis"
 )
@@ -42,6 +43,8 @@ func TestIntegration_SetAndGetMultiple(t *testing.T) {
 	}
 	defer c.Close()
 
+	ctx := t.Context()
+
 	key1 := []byte{1}
 	val1 := []byte("val1")
 
@@ -49,19 +52,19 @@ func TestIntegration_SetAndGetMultiple(t *testing.T) {
 	val2 := []byte("val2")
 
 	// 1. Set key1
-	err = c.Set(key1, val1)
+	err = c.Set(ctx, key1, val1)
 	if err != nil {
 		t.Fatalf("Set key1 failed: %v", err)
 	}
 
 	// 2. Set key2 (tests multiple requests over single connection)
-	err = c.Set(key2, val2)
+	err = c.Set(ctx, key2, val2)
 	if err != nil {
 		t.Fatalf("Set key2 failed: %v", err)
 	}
 
 	// 3. Get key1
-	got1, err := c.Get(key1)
+	got1, err := c.Get(ctx, key1)
 	if err != nil {
 		t.Fatalf("Get key1 failed: %v", err)
 	}
@@ -70,7 +73,7 @@ func TestIntegration_SetAndGetMultiple(t *testing.T) {
 	}
 
 	// 4. Get key2
-	got2, err := c.Get(key2)
+	got2, err := c.Get(ctx, key2)
 	if err != nil {
 		t.Fatalf("Get key2 failed: %v", err)
 	}
@@ -79,19 +82,19 @@ func TestIntegration_SetAndGetMultiple(t *testing.T) {
 	}
 
 	// 5. Exist key1
-	exists, err := c.Exist(key1)
+	exists, err := c.Exist(ctx, key1)
 	if err != nil || !exists {
 		t.Fatalf("Exist key1 expected true, got %v, err %v", exists, err)
 	}
 
 	// 6. Del key1
-	err = c.Del(key1)
+	err = c.Del(ctx, key1)
 	if err != nil {
 		t.Fatalf("Del key1 failed: %v", err)
 	}
 
 	// 7. Get key1 after Del
-	_, err = c.Get(key1)
+	_, err = c.Get(ctx, key1)
 	if !errors.Is(err, client.ErrNoSuchKey) {
 		t.Fatalf("Get key1 after Del expected status.NoSuchKey, got: %v", err)
 	}
@@ -104,27 +107,29 @@ func TestIntegration_TTLOperations(t *testing.T) {
 	}
 	defer c.Close()
 
+	ctx := t.Context()
+
 	key := []byte{99}
 	val := []byte("ttl-val")
 
-	err = c.Set(key, val)
+	err = c.Set(ctx, key, val)
 	if err != nil {
 		t.Fatalf("Set failed: %v", err)
 	}
 
 	// Initially no TTL set
-	_, err = c.TTLGet(key)
+	_, err = c.TTLGet(ctx, key)
 	if err != client.ErrNoTTL {
 		t.Fatalf("expected TTL not to exist before TTLSet, got %v", err.Error())
 	}
 
 	// Set TTL to 5 seconds
-	err = c.TTLSet(key, 5)
+	err = c.TTLSet(ctx, key, 5)
 	if err != nil {
 		t.Fatalf("TTLSet failed: %v", err)
 	}
 
-	secs, err := c.TTLGet(key)
+	secs, err := c.TTLGet(ctx, key)
 	if err != nil {
 		t.Fatalf("TTLGet failed: %v", err)
 	}
@@ -133,12 +138,12 @@ func TestIntegration_TTLOperations(t *testing.T) {
 	}
 
 	// Remove TTL
-	err = c.TTLDel(key)
+	err = c.TTLDel(ctx, key)
 	if err != nil {
 		t.Fatalf("TTLDel failed: %v", err)
 	}
 
-	_, err = c.TTLGet(key)
+	_, err = c.TTLGet(ctx, key)
 	if err != client.ErrNoTTL {
 		t.Fatalf("expected TTL not to exist after TTLDel, got %v", err.Error())
 	}
@@ -147,6 +152,7 @@ func TestIntegration_TTLOperations(t *testing.T) {
 func TestIntegration_ConcurrentClients(t *testing.T) {
 	numClients := 10
 	errChan := make(chan error, numClients)
+	ctx := t.Context()
 
 	for i := 0; i < numClients; i++ {
 		go func(id int) {
@@ -160,11 +166,11 @@ func TestIntegration_ConcurrentClients(t *testing.T) {
 			key := []byte{byte(id)}
 			val := []byte("concurrent_data")
 
-			if err := c.Set(key, val); err != nil {
+			if err := c.Set(ctx, key, val); err != nil {
 				errChan <- err
 				return
 			}
-			got, err := c.Get(key)
+			got, err := c.Get(ctx, key)
 			if err != nil || string(got) != string(val) {
 				errChan <- err
 				return
@@ -187,16 +193,17 @@ func TestServer_RawConnection_MalformedData(t *testing.T) {
 	}
 	defer conn.Close()
 
-	// Send garbage data that does not form a valid request header
-	_, err = conn.Write([]byte("garbage_short_data"))
+	// Send garbage data that does not form a valid request (invalid operation 255)
+	raw := make([]byte, protocol.RequestHeaderSize)
+	raw[0] = 255
+	_, err = conn.Write(raw)
 	if err != nil {
 		t.Fatalf("failed to write garbage data: %v", err)
 	}
 
 	buf := make([]byte, 100)
 	n, _ := conn.Read(buf)
-	if status.Status(n) != status.WrongInput {
-		// Server might respond with error response before closing connection
-		t.Logf("server sent response to garbage data: %v", buf[:n])
+	if n > 0 && status.Status(buf[0]) != status.WrongInput {
+		t.Errorf("expected status.WrongInput, got %v", status.Status(buf[0]))
 	}
 }

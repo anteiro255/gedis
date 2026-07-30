@@ -8,24 +8,40 @@ import (
 // TTL
 type TTL uint32
 
-func (ttl TTL) isAlive() bool {
-	return int64(ttl)-int64(time.Now().Unix()) > 0
+func (ttl TTL) isAlive(now uint32) bool {
+	return ttl > TTL(now)
 }
 
 // Key and Val structures
 type Key [16]byte
 type Val []byte
 
-// The DB structure itself
-type DB struct {
+const shardCount = 32
+
+type shard struct {
 	mu     sync.RWMutex
 	keyVal map[Key]Val
 	keyTTL map[Key]TTL
 }
 
+// The DB structure itself
+type DB struct {
+	shards [shardCount]shard
+}
+
 func NewDB() *DB {
-	return &DB{
-		keyVal: make(map[Key]Val),
-		keyTTL: make(map[Key]TTL),
+	db := &DB{}
+	for i := range db.shards {
+		db.shards[i].keyVal = make(map[Key]Val)
+		db.shards[i].keyTTL = make(map[Key]TTL)
 	}
+	return db
+}
+
+func (db *DB) shard(key Key) *shard {
+	return &db.shards[key[0]%shardCount]
+}
+
+func unixNow() uint32 {
+	return uint32(time.Now().Unix())
 }

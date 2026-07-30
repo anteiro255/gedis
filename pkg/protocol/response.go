@@ -23,18 +23,18 @@ func NewResponse(s status.Status, body []byte) *Response {
 	}
 }
 
-func NewResponseFromBytes(in []byte) (*Response, error) {
-	if len(in) < ResponseHeaderSize {
+func NewResponseFromBytes(resBytes []byte) (*Response, error) {
+	if len(resBytes) < ResponseHeaderSize {
 		return nil, status.WrongInput
 	}
 
 	var r Response
-	bytes := [ResponseHeaderSize]byte(in[:ResponseHeaderSize])
-	r.Header = NewResponseHeaderFromBytes(&bytes)
+	headerBytes := [ResponseHeaderSize]byte(resBytes[:ResponseHeaderSize])
+	r.Header = NewResponseHeaderFromBytes(&headerBytes)
 
-	if len(in) < ResponseHeaderSize+int(r.Header.BodySize) {
+	if len(resBytes) < ResponseHeaderSize+int(r.Header.BodySize) {
 		return nil, status.WrongInput
 	}
-	r.Body = in[ResponseHeaderSize : ResponseHeaderSize+int(r.Header.BodySize)]
+	r.Body = resBytes[ResponseHeaderSize : ResponseHeaderSize+int(r.Header.BodySize)]
 	return &r, nil
 }

@@ -9,18 +9,18 @@ import (
 func BenchmarkSetGetDelExists(b *testing.B) {
 	k := []byte("Hello")
 	v := []byte(" world!")
+	ctx := b.Context()
 
 	b.ReportAllocs()
 	c, err := gedis.NewClient(serverAddr)
 	if err != nil {
 		b.Fatal(err)
 	}
-
 	b.ResetTimer()
 	for b.Loop() {
-		c.Set(k, v)
-		c.Get(k)
-		c.Del(k)
-		c.Exist(k)
+		c.Set(ctx, k, v)
+		c.Get(ctx, k)
+		c.Del(ctx, k)
+		c.Exist(ctx, k)
 	}
 }

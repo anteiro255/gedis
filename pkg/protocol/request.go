@@ -9,14 +9,14 @@ import (
 // Body:    []byte;         changeable size
 type Request struct {
 	Body   []byte
-	Header *RequestHeader
+	Header RequestHeader
 }
 
-func NewRequest(action action.Action, key [RequestKeySize]byte, body []byte) *Request {
+func NewRequest(action action.Action, key *[RequestKeySize]byte, body []byte) *Request {
 	return &Request{
-		Header: &RequestHeader{
+		Header: RequestHeader{
 			Operation: uint8(action),
-			Key:       key,
+			Key:       *key,
 			BodySize:  uint32(len(body)),
 		},
 		Body: body,

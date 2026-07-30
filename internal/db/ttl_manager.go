@@ -26,19 +26,25 @@ func (db *DB) RunTTLManager(ctx context.Context, cfg *config.Config) {
 }
 
 func (db *DB) tickTTLs(i uint) {
-	db.mu.Lock()
-	defer db.mu.Unlock()
+	now := unixNow()
+	for shardIndex := range db.shards {
+		s := &db.shards[shardIndex]
+		s.mu.Lock()
+		for k, ttl := range s.keyTTL {
+			if i == 0 {
+				break
+			}
 
-	for k, ttl := range db.keyTTL {
+			if !ttl.isAlive(now) {
+				delete(s.keyVal, k)
+				delete(s.keyTTL, k)
+			}
+
+			i--
+		}
+		s.mu.Unlock()
 		if i == 0 {
 			break
 		}
-
-		if !ttl.isAlive() {
-			delete(db.keyVal, k)
-			delete(db.keyTTL, k)
-		}
-
-		i--
 	}
 }

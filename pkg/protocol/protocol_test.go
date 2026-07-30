@@ -17,8 +17,7 @@ func TestRequestHeader_RoundTrip(t *testing.T) {
 		BodySize:  1024,
 	}
 
-	bytesData := original.ToBytes()
-	parsed := protocol.NewRequestHeaderFromBytes(&bytesData)
+	parsed := protocol.NewRequestHeaderFromBytes(original.ToBytes())
 
 	if parsed.Operation != original.Operation {
 		t.Errorf("Operation mismatch: got %d, want %d", parsed.Operation, original.Operation)
@@ -38,7 +37,7 @@ func TestResponseHeader_RoundTrip(t *testing.T) {
 	}
 
 	bytesData := original.ToBytes()
-	parsed := protocol.NewResponseHeaderFromBytes(&bytesData)
+	parsed := protocol.NewResponseHeaderFromBytes(bytesData)
 
 	if parsed.Status != original.Status {
 		t.Errorf("Status mismatch: got %v, want %v", parsed.Status, original.Status)

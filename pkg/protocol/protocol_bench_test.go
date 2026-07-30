@@ -33,14 +33,14 @@ func BenchmarkRequestHeaderFromBytes(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		protocol.NewRequestHeaderFromBytes(&bytesData)
+		protocol.NewRequestHeaderFromBytes(bytesData)
 	}
 }
 
 func BenchmarkRequestToBytes(b *testing.B) {
 	key := [protocol.RequestKeySize]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
 	body := make([]byte, 1024)
-	req := protocol.NewRequest(action.Set, key, body)
+	req := protocol.NewRequest(action.Set, &key, body)
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -70,12 +70,11 @@ func BenchmarkResponseHeaderFromBytes(b *testing.B) {
 		Status:   status.OK,
 		BodySize: 1024,
 	}
-	bytesData := h.ToBytes()
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		protocol.NewResponseHeaderFromBytes(&bytesData)
+		protocol.NewResponseHeaderFromBytes(h.ToBytes())
 	}
 }
 
@@ -101,7 +100,7 @@ func BenchmarkNewRequest(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		protocol.NewRequest(action.Set, key, body)
+		protocol.NewRequest(action.Set, &key, body)
 	}
 }
 

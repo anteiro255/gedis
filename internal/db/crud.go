@@ -3,52 +3,60 @@ package db
 import "github.com/anteiro255/gedis/pkg/protocol/status"
 
 func (db *DB) Set(key Key, val Val) {
-	db.mu.Lock()
-	defer db.mu.Unlock()
+	s := db.shard(key)
+	s.mu.Lock()
 
-	delete(db.keyTTL, key)
-	db.keyVal[key] = val
+	delete(s.keyTTL, key)
+	s.keyVal[key] = val
+	s.mu.Unlock()
 }
 
 func (db *DB) Get(key Key) (Val, status.Status) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
+	s := db.shard(key)
+	s.mu.RLock()
 
-	val, ok := db.keyVal[key]
+	val, ok := s.keyVal[key]
 	if !ok {
+		s.mu.RUnlock()
 		return Val{}, status.NoSuchKey
 	}
-	if ttl, ok := db.keyTTL[key]; ok && !ttl.isAlive() {
+	if ttl, ok := s.keyTTL[key]; ok && !ttl.isAlive(unixNow()) {
+		s.mu.RUnlock()
 		return Val{}, status.NoSuchKey
 	}
+	s.mu.RUnlock()
 	return val, status.OK
 }
 
 func (db *DB) Del(key Key) (sts status.Status) {
 	sts = status.OK
-	db.mu.Lock()
-	defer db.mu.Unlock()
+	s := db.shard(key)
+	s.mu.Lock()
 
-	if _, ok := db.keyVal[key]; !ok {
+	if _, ok := s.keyVal[key]; !ok {
 		sts = status.NoSuchKey
-	} else if ttl, ok := db.keyTTL[key]; ok && !ttl.isAlive() {
+	} else if ttl, ok := s.keyTTL[key]; ok && !ttl.isAlive(unixNow()) {
 		sts = status.NoSuchKey
 	}
 
-	delete(db.keyVal, key)
-	delete(db.keyTTL, key)
+	delete(s.keyVal, key)
+	delete(s.keyTTL, key)
+	s.mu.Unlock()
 	return
 }
 
 func (db *DB) Exists(key Key) status.Status {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
+	s := db.shard(key)
+	s.mu.RLock()
 
-	if _, ok := db.keyVal[key]; !ok {
+	if _, ok := s.keyVal[key]; !ok {
+		s.mu.RUnlock()
 		return status.NoSuchKey
-	} else if ttl, ok := db.keyTTL[key]; ok && !ttl.isAlive() {
+	} else if ttl, ok := s.keyTTL[key]; ok && !ttl.isAlive(unixNow()) {
+		s.mu.RUnlock()
 		return status.NoSuchKey
 	}
 
+	s.mu.RUnlock()
 	return status.OK
 }

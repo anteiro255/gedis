@@ -1,61 +1,68 @@
 package db
 
-import (
-	"time"
-
-	"github.com/anteiro255/gedis/pkg/protocol/status"
-)
+import "github.com/anteiro255/gedis/pkg/protocol/status"
 
 func (db *DB) SetTTL(key Key, ttl TTL) status.Status {
-	db.mu.Lock()
-	defer db.mu.Unlock()
+	s := db.shard(key)
+	s.mu.Lock()
 
-	_, ok := db.keyVal[key]
+	_, ok := s.keyVal[key]
 	if !ok {
+		s.mu.Unlock()
 		return status.NoSuchKey
 	}
 
-	if existingTTL, ok := db.keyTTL[key]; ok && !existingTTL.isAlive() {
-		delete(db.keyVal, key)
-		delete(db.keyTTL, key)
+	if existingTTL, ok := s.keyTTL[key]; ok && !existingTTL.isAlive(unixNow()) {
+		delete(s.keyVal, key)
+		delete(s.keyTTL, key)
+		s.mu.Unlock()
 		return status.NoSuchKey
 	}
 
-	db.keyTTL[key] = TTL(time.Now().Unix() + int64(ttl))
+	s.keyTTL[key] = TTL(unixNow()) + ttl
+	s.mu.Unlock()
 	return status.OK
 }
 
 func (db *DB) GetTTL(key Key) (TTL, status.Status) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
+	s := db.shard(key)
+	s.mu.RLock()
 
-	if _, ok := db.keyVal[key]; !ok {
+	if _, ok := s.keyVal[key]; !ok {
+		s.mu.RUnlock()
 		return TTL(0), status.NoSuchKey
 	}
 
-	if ttl, ok := db.keyTTL[key]; ok {
-		if !ttl.isAlive() {
+	if ttl, ok := s.keyTTL[key]; ok {
+		now := unixNow()
+		if !ttl.isAlive(now) {
+			s.mu.RUnlock()
 			return TTL(0), status.NoSuchKey
 		}
-		rem := int64(ttl) - time.Now().Unix()
-		return TTL(rem), status.OK
+		rem := ttl - TTL(now)
+		s.mu.RUnlock()
+		return rem, status.OK
 	}
+	s.mu.RUnlock()
 	return TTL(0), status.NoTTL
 }
 
 func (db *DB) DelTTL(key Key) status.Status {
-	db.mu.Lock()
-	defer db.mu.Unlock()
+	s := db.shard(key)
+	s.mu.Lock()
 
-	_, ok := db.keyVal[key]
+	_, ok := s.keyVal[key]
 	if !ok {
+		s.mu.Unlock()
 		return status.NoSuchKey
 	}
-	if ttl, ok := db.keyTTL[key]; ok && !ttl.isAlive() {
-		delete(db.keyVal, key)
-		delete(db.keyTTL, key)
+	if ttl, ok := s.keyTTL[key]; ok && !ttl.isAlive(unixNow()) {
+		delete(s.keyVal, key)
+		delete(s.keyTTL, key)
+		s.mu.Unlock()
 		return status.NoSuchKey
 	}
-	delete(db.keyTTL, key)
+	delete(s.keyTTL, key)
+	s.mu.Unlock()
 	return status.OK
 }

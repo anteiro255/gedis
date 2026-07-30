@@ -36,6 +36,7 @@ func (s *Server) Serve(conn net.Conn) {
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		tcpConn.SetKeepAlive(true)
 		tcpConn.SetKeepAlivePeriod(30 * time.Second) // Probe every 30s
+		tcpConn.SetNoDelay(true)
 	}
 
 	connection.New(conn, s.db, s.config).Serve()
