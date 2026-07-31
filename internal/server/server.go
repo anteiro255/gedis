@@ -9,28 +9,26 @@ import (
 
 	"github.com/anteiro255/gedis/internal/config"
 	"github.com/anteiro255/gedis/internal/db"
+	"github.com/anteiro255/gedis/internal/raftnode"
 	"github.com/anteiro255/gedis/internal/server/connection"
 )
 
 type Server struct {
 	listener net.Listener
 	db       *db.DB
-	config   *config.Config
+	config   *config.ServerConfig
+	raftNode *raftnode.Node
 }
 
-func NewServer() Server {
+func NewServer(db *db.DB) Server {
 	return Server{
-		config: config.Default(),
+		db:     db,
+		config: config.DefaultServerConfig(),
 	}
 }
 
-func (s *Server) SetDB(d *db.DB) {
-	s.db = d
-}
-
-func (s *Server) SetConfig(cfg *config.Config) {
-	s.config = cfg
-}
+func (s *Server) SetConfig(cfg *config.ServerConfig) { s.config = cfg }
+func (s *Server) SetRaftNode(node *raftnode.Node)    { s.raftNode = node }
 
 func (s *Server) Serve(conn net.Conn) {
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
@@ -39,7 +37,9 @@ func (s *Server) Serve(conn net.Conn) {
 		tcpConn.SetNoDelay(true)
 	}
 
-	connection.New(conn, s.db, s.config).Serve()
+	clientConn := connection.New(conn, s.db, s.config)
+	clientConn.SetRaftNode(s.raftNode)
+	clientConn.Serve()
 }
 
 func (s *Server) RunAt(ctx context.Context, address string) error {
@@ -74,6 +74,11 @@ func (s *Server) RunAt(ctx context.Context, address string) error {
 }
 
 func (s *Server) Close() error {
+	if s.raftNode != nil {
+		if err := s.raftNode.Close(); err != nil {
+			return err
+		}
+	}
 	if s.listener != nil {
 		return s.listener.Close()
 	}

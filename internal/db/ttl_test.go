@@ -17,7 +17,7 @@ func TestDB_TTLManagerEviction(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
-	database.RunTTLManager(ctx, config.Default())
+	go database.RunTTLManager(ctx, config.DefaultStorageConfig().TTLEntryCheckPerSecond())
 
 	key := db.Key([16]byte{9, 9, 9})
 	val := db.Val([]byte("expiring_value"))

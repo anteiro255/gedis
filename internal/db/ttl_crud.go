@@ -2,8 +2,23 @@ package db
 
 import "github.com/anteiro255/gedis/pkg/protocol/status"
 
+func (db *DB) Expire(key Key, deadline TTL) status.Status {
+	s := db.shardFor(key)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.keyVal[key]; !ok {
+		return status.NoSuchKey
+	}
+	if ttl, ok := s.keyTTL[key]; !ok || ttl != deadline {
+		return status.NoSuchKey
+	}
+	delete(s.keyVal, key)
+	delete(s.keyTTL, key)
+	return status.OK
+}
+
 func (db *DB) SetTTL(key Key, ttl TTL) status.Status {
-	s := db.shard(key)
+	s := db.shardFor(key)
 	s.mu.Lock()
 
 	_, ok := s.keyVal[key]
@@ -25,7 +40,7 @@ func (db *DB) SetTTL(key Key, ttl TTL) status.Status {
 }
 
 func (db *DB) GetTTL(key Key) (TTL, status.Status) {
-	s := db.shard(key)
+	s := db.shardFor(key)
 	s.mu.RLock()
 
 	if _, ok := s.keyVal[key]; !ok {
@@ -48,7 +63,7 @@ func (db *DB) GetTTL(key Key) (TTL, status.Status) {
 }
 
 func (db *DB) DelTTL(key Key) status.Status {
-	s := db.shard(key)
+	s := db.shardFor(key)
 	s.mu.Lock()
 
 	_, ok := s.keyVal[key]

@@ -50,8 +50,7 @@ func TestConn_Serve_SetAndGet(t *testing.T) {
 	defer clientConn.Close()
 
 	database := db.NewDB()
-	cfg := config.Default()
-	c := New(serverConn, database, cfg)
+	c := New(serverConn, database, config.DefaultServerConfig())
 
 	done := make(chan struct{})
 	go func() {
@@ -96,8 +95,7 @@ func TestConn_Serve_ExistAndDel(t *testing.T) {
 	defer clientConn.Close()
 
 	database := db.NewDB()
-	cfg := config.Default()
-	c := New(serverConn, database, cfg)
+	c := New(serverConn, database, config.DefaultServerConfig())
 
 	done := make(chan struct{})
 	go func() {
@@ -145,8 +143,7 @@ func TestConn_Serve_ClientDisconnectEOF(t *testing.T) {
 	serverConn, clientConn := net.Pipe()
 
 	database := db.NewDB()
-	cfg := config.Default()
-	c := New(serverConn, database, cfg)
+	c := New(serverConn, database, config.DefaultServerConfig())
 
 	done := make(chan struct{})
 	go func() {
@@ -170,8 +167,7 @@ func TestConn_Serve_InvalidOperation(t *testing.T) {
 	defer clientConn.Close()
 
 	database := db.NewDB()
-	cfg := config.Default()
-	c := New(serverConn, database, cfg)
+	c := New(serverConn, database, config.DefaultServerConfig())
 
 	done := make(chan struct{})
 	go func() {

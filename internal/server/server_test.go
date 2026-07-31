@@ -22,10 +22,9 @@ func TestMain(m *testing.M) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	database := db.NewDB()
-	database.RunTTLManager(ctx, config.Default())
+	go database.RunTTLManager(ctx, config.DefaultStorageConfig().TTLEntryCheckPerSecond())
 
-	s := server.NewServer()
-	s.SetDB(database)
+	s := server.NewServer(database)
 
 	go s.RunAt(ctx, serverAddr)
 

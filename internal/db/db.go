@@ -8,6 +8,11 @@ import (
 // TTL
 type TTL uint32
 
+type ExpiredEntry struct {
+	Key      Key
+	Deadline TTL
+}
+
 func (ttl TTL) isAlive(now uint32) bool {
 	return ttl > TTL(now)
 }
@@ -18,7 +23,7 @@ type Val []byte
 
 const shardCount = 32
 
-type shard struct {
+type Shard struct {
 	mu     sync.RWMutex
 	keyVal map[Key]Val
 	keyTTL map[Key]TTL
@@ -26,7 +31,7 @@ type shard struct {
 
 // The DB structure itself
 type DB struct {
-	shards [shardCount]shard
+	shards [shardCount]Shard
 }
 
 func NewDB() *DB {
@@ -38,7 +43,7 @@ func NewDB() *DB {
 	return db
 }
 
-func (db *DB) shard(key Key) *shard {
+func (db *DB) shardFor(key Key) *Shard {
 	return &db.shards[key[0]%shardCount]
 }
 

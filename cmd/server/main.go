@@ -10,11 +10,12 @@ import (
 	"github.com/anteiro255/gedis/internal/db"
 	"github.com/anteiro255/gedis/internal/interceptor"
 	"github.com/anteiro255/gedis/internal/log"
+	"github.com/anteiro255/gedis/internal/raftnode"
 	"github.com/anteiro255/gedis/internal/server"
 )
 
 func main() {
-	log.InitLogger(config.LoadLogCfg())
+	log.InitLogger(config.LoadLogConfig())
 
 	cfg := config.Load()
 
@@ -23,24 +24,33 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if err := database.LoadSnapshot(cfg.SnapshotPath()); err != nil {
-		slog.Error("Failed to load snapshot", "path", cfg.SnapshotPath(), "error", err)
-		os.Exit(1)
-	}
-	slog.Info("Snapshot loaded", "path", cfg.SnapshotPath())
-
 	var wg sync.WaitGroup
 
-	wg.Go(func() { database.RunTTLManager(ctx, cfg) })
-	wg.Go(func() { database.RunSnapshotter(ctx, cfg) })
+	if !cfg.Raft.Enabled() {
+		if err := database.LoadSnapshot(cfg.Raft.SnapshotPath()); err != nil {
+			slog.Error("Failed to load snapshot", "path", cfg.Raft.SnapshotPath(), "error", err)
+			os.Exit(1)
+		}
+		wg.Go(func() { database.RunTTLManager(ctx, cfg.Storage.TTLEntryCheckPerSecond()) })
+		wg.Go(func() { database.RunSnapshotter(ctx, cfg.Raft.SnapshotPath(), cfg.Raft.SnapshotInterval()) })
+	}
 
-	s := server.NewServer()
-	s.SetDB(database)
-	s.SetConfig(cfg)
+	s := server.NewServer(database)
+	s.SetConfig(cfg.Server)
+
+	if cfg.Raft.Enabled() {
+		raftNode, err := raftnode.NewNode(cfg.Raft, database)
+		if err != nil {
+			slog.Error("Failed to start Raft", "error", err)
+			os.Exit(1)
+		}
+		s.SetRaftNode(raftNode)
+		wg.Go(func() { raftNode.RunTTLManager(ctx, cfg.Storage.TTLEntryCheckPerSecond()) })
+	}
 
 	wg.Go(func() { interceptor.SetInterceptorOn(cancel) }) // cancel the context on shutdowng
 
-	if err := s.RunAt(ctx, cfg.Address()); err != nil {
+	if err := s.RunAt(ctx, cfg.Server.Address()); err != nil {
 		slog.Error("Error on server starting", "error", err.Error())
 		os.Exit(1)
 	}

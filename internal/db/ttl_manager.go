@@ -2,48 +2,58 @@ package db
 
 import (
 	"context"
+	"math/rand/v2"
 	"time"
-
-	"github.com/anteiro255/gedis/internal/config"
 )
 
-// Call with "go" for not blocking:
-// go db.RunSnapshotter(ctx, cfg)
-func (db *DB) RunTTLManager(ctx context.Context, cfg *config.Config) {
-	go func() {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
+// Only for non-raft mode
+// Blocking function
+// RunTTLManager starts the background TTL expiry worker.
+func (db *DB) RunTTLManager(ctx context.Context, checks uint) {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				db.tickTTLs(cfg.TTLEntryCheckPerSecond())
-			}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			db.TickTTLs(checks, func(s *Shard, k Key) {
+				delete(s.keyVal, k)
+				delete(s.keyTTL, k)
+			})
 		}
-	}()
+	}
 }
 
-func (db *DB) tickTTLs(i uint) {
+func (db *DB) TickTTLs(checks uint, del func(s *Shard, k Key)) {
 	now := unixNow()
-	for shardIndex := range db.shards {
-		s := &db.shards[shardIndex]
+
+	firstShardIndex := rand.IntN(shardCount)
+	i := firstShardIndex
+	for {
+
+		s := &db.shards[i]
 		s.mu.Lock()
 		for k, ttl := range s.keyTTL {
-			if i == 0 {
-				break
+			if checks == 0 {
+				s.mu.Unlock()
+				return
 			}
 
 			if !ttl.isAlive(now) {
-				delete(s.keyVal, k)
-				delete(s.keyTTL, k)
+				del(s, k)
 			}
 
-			i--
+			checks--
 		}
 		s.mu.Unlock()
-		if i == 0 {
+		if checks == 0 {
+			break
+		}
+		i++
+		i %= shardCount
+		if i == firstShardIndex {
 			break
 		}
 	}

@@ -1,7 +1,7 @@
 package db_test
 
 import (
-	"os"
+	"bytes"
 	"slices"
 	"testing"
 
@@ -14,16 +14,19 @@ func TestSnapshot(t *testing.T) {
 
 	key := [16]byte{0, 12, 89, 255}
 	val := []byte("ABC123")
-	snapshot_name := "gedis_snapshot_test.snap.tmp"
-
 	database := db.NewDB()
 	database.Set(key, val)
-	database.SaveSnapshot(snapshot_name)
+	var snapshot bytes.Buffer
+	if err := database.WriteSnapshot(&snapshot); err != nil {
+		t.Fatal(err)
+	}
 
 	// the snapshot file consists of {key: val}
 
 	database = db.NewDB()
-	database.LoadSnapshot(snapshot_name)
+	if err := database.ReadSnapshot(&snapshot); err != nil {
+		t.Fatal(err)
+	}
 	got, stat := database.Get(key)
 	if stat != status.OK {
 		t.Error("db.Get()", "status", stat.Error(), "expected_status", status.OK.Error())
@@ -33,16 +36,20 @@ func TestSnapshot(t *testing.T) {
 	}
 
 	database.Del(key)
-	database.SaveSnapshot(snapshot_name)
+	snapshot.Reset()
+	if err := database.WriteSnapshot(&snapshot); err != nil {
+		t.Fatal(err)
+	}
 
 	// They snapshot is empty now
 
 	database = db.NewDB()
-	database.LoadSnapshot(snapshot_name)
+	if err := database.ReadSnapshot(&snapshot); err != nil {
+		t.Fatal(err)
+	}
 	got, stat = database.Get(key)
 	if stat != status.NoSuchKey {
 		t.Error("db.Get()", "status", stat.Error(), "expected_status", status.NoSuchKey.Error(), "got", got)
 	}
 
-	os.Remove(snapshot_name)
 }

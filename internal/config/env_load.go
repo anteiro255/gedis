@@ -1,48 +1,18 @@
 package config
 
-import "time"
+const envPrefix = "GEDIS_"
 
 type Config struct {
 	Server  *ServerConfig
 	Storage *StorageConfig
+	Raft    *RaftConfig
 }
 
 func Load() (cfg *Config) {
 	cfg = &Config{}
 
-	cfg.Server = LoadServerCfg()
-	cfg.Storage = LoadStorageCfg()
+	cfg.Server = LoadServerConfig()
+	cfg.Storage = LoadStorageConfig()
+	cfg.Raft = LoadRaftCfg()
 	return
-}
-
-// Server config delegation
-
-func (c *Config) Address() string {
-	return c.Server.Address()
-}
-
-func (c *Config) TCPPingInterval() time.Duration {
-	return c.Server.TCPPingInterval()
-}
-
-func (c *Config) ReceiveTimeout() time.Duration {
-	return c.Server.ReceiveTimeout()
-}
-
-func (c *Config) SendTimeout() time.Duration {
-	return c.Server.SendTimeout()
-}
-
-// Storage config delegation
-
-func (c *Config) TTLEntryCheckPerSecond() uint {
-	return c.Storage.TTLEntryCheckPerSecond()
-}
-
-func (c *Config) SnapshotPath() string {
-	return c.Storage.SnapshotPath()
-}
-
-func (c *Config) SnapshotInterval() time.Duration {
-	return c.Storage.SnapshotInterval()
 }

@@ -15,14 +15,15 @@ type LogConfig struct {
 	verbosity uint8 // GEDIS_VERBOSITY
 }
 
-func LoadLogCfg() (c *LogConfig) {
+func LoadLogConfig() (c *LogConfig) {
+	c = DefaultLogConfig()
 	c.loadVerbosity()
 	return
 }
 
 // verbosity
 func (c *LogConfig) loadVerbosity() {
-	envKey := "GEDIS_VERBOSITY"
+	envKey := envPrefix + "VERBOSITY"
 
 	if n, ok := loadInt(envKey); ok {
 		if n >= int(minVerbosity) && n <= int(maxVerbosity) {
@@ -31,7 +32,6 @@ func (c *LogConfig) loadVerbosity() {
 		}
 		slog.Error(envKey + " should be not less than " + strconv.Itoa(int(minVerbosity)) + " and not greater than " + strconv.Itoa(int(maxVerbosity)))
 	}
-	c.verbosity = defaultVerbosity
 }
 
 func (c *LogConfig) Verbosity() uint8 {

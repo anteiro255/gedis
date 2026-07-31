@@ -16,6 +16,22 @@ func loadString(envKey string) (string, bool) {
 	return "", false
 }
 
+func loadBool(envKey string) (bool, bool) {
+	if val := os.Getenv(envKey); val != "" {
+		switch val {
+		case "0":
+			fallthrough
+		case "1":
+			slog.Debug(envKey + "=" + val + " was loaded")
+			return val == "1", true
+		default:
+			slog.Error("Failed to convert "+envKey+"="+val+" to bool", "error", "the value is not 0 or 1")
+		}
+	}
+	slog.Debug("There's no " + envKey + " in environment")
+	return false, false
+}
+
 func loadInt(envKey string) (int, bool) {
 	if val := os.Getenv(envKey); val != "" {
 		if n, err := strconv.Atoi(val); err == nil {

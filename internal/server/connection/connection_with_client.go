@@ -2,6 +2,7 @@ package connection
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"io"
 	"log/slog"
@@ -11,6 +12,7 @@ import (
 	"github.com/anteiro255/gedis/internal/config"
 	"github.com/anteiro255/gedis/internal/db"
 	dbaction "github.com/anteiro255/gedis/internal/db/action"
+	"github.com/anteiro255/gedis/internal/raftnode"
 	"github.com/anteiro255/gedis/pkg/protocol"
 	protocolaction "github.com/anteiro255/gedis/pkg/protocol/action"
 	"github.com/anteiro255/gedis/pkg/protocol/status"
@@ -27,12 +29,17 @@ type Conn struct {
 	writer         *bufio.Writer
 	reader         *bufio.Reader
 	db             *db.DB
-	cfg            *config.Config
+	cfg            *config.ServerConfig
+	raft           *raftnode.Node
 	requestHeader  [protocol.RequestHeaderSize]byte
 	responseHeader [protocol.ResponseHeaderSize]byte
 }
 
-func New(conn net.Conn, db *db.DB, cfg *config.Config) *Conn {
+// SetRaftNode enables consensus-aware mutation handling for this client
+// connection. Reads continue to use the local database.
+func (conn *Conn) SetRaftNode(node *raftnode.Node) { conn.raft = node }
+
+func New(conn net.Conn, db *db.DB, cfg *config.ServerConfig) *Conn {
 	return &Conn{
 		conn:   conn,
 		writer: bufio.NewWriter(conn),
@@ -156,13 +163,57 @@ func (conn *Conn) Serve() {
 			req.Body = owned
 		}
 
-		action := dbaction.Action{
-			DB:         conn.db,
-			ActionType: protocolaction.Action(req.Header.Operation),
-			Key:        req.Header.Key,
-			Body:       req.Body,
+		op := protocolaction.Action(req.Header.Operation)
+		if conn.raft == nil {
+			action := dbaction.Action{DB: conn.db, ActionType: op, Key: req.Header.Key, Body: req.Body}
+			body, stat := action.Perform()
+			if stat == status.InternalError {
+				slog.Error(stat.Error())
+				conn.writeError(stat)
+				break
+			}
+			if req.Header.BodySize > 0 && req.Header.BodySize <= 4096 {
+				_, err = conn.reader.Discard(int(req.Header.BodySize))
+				if err != nil {
+					slog.Error("Discarding bytes from the buffer", "error", err)
+				}
+			}
+			if err := conn.writeResponse(stat, body); err != nil {
+				slog.Debug("Failed to write response", "addr", addr, "error", err.Error())
+				break
+			}
+			continue
 		}
-		body, stat := action.Perform()
+
+		var body []byte
+		var stat status.Status
+		var applyErr error
+		if isMutation(op) {
+			// Only the leader may append mutations. Followers return the known
+			// leader address instead of creating divergent local state.
+			if !conn.raft.IsLeader() {
+				if req.Header.BodySize > 0 && req.Header.BodySize <= 4096 {
+					_, _ = conn.reader.Discard(int(req.Header.BodySize))
+				}
+				leader := []byte(conn.raft.LeaderAddress())
+				if err := conn.writeResponse(status.NotLeader, leader); err != nil {
+					slog.Debug("Failed to write response", "addr", addr, "error", err.Error())
+					break
+				}
+				continue
+			}
+			stat, applyErr = conn.raft.Apply(context.Background(), op, req.Header.Key, req.Body)
+		} else {
+			action := dbaction.Action{DB: conn.db, ActionType: op, Key: req.Header.Key, Body: req.Body}
+			body, stat = action.Perform()
+		}
+		if applyErr != nil {
+			if stat == status.NotLeader {
+				body = []byte(conn.raft.LeaderAddress())
+			} else {
+				stat = status.InternalError
+			}
+		}
 		if stat == status.InternalError {
 			slog.Error(stat.Error())
 			conn.writeError(stat)
@@ -183,4 +234,10 @@ func (conn *Conn) Serve() {
 
 	}
 	slog.Info("The client was disconnected", "addr", addr)
+}
+
+func isMutation(op protocolaction.Action) bool {
+	// These operations change replicated state; GET, EXISTS, and TTL_GET are
+	// safe to execute locally on every member.
+	return op == protocolaction.Set || op == protocolaction.Del || op == protocolaction.TTL_Set || op == protocolaction.TTL_Del || op == protocolaction.TTL_Expire
 }

@@ -3,7 +3,7 @@ package db
 import "github.com/anteiro255/gedis/pkg/protocol/status"
 
 func (db *DB) Set(key Key, val Val) {
-	s := db.shard(key)
+	s := db.shardFor(key)
 	s.mu.Lock()
 
 	delete(s.keyTTL, key)
@@ -12,7 +12,7 @@ func (db *DB) Set(key Key, val Val) {
 }
 
 func (db *DB) Get(key Key) (Val, status.Status) {
-	s := db.shard(key)
+	s := db.shardFor(key)
 	s.mu.RLock()
 
 	val, ok := s.keyVal[key]
@@ -30,7 +30,7 @@ func (db *DB) Get(key Key) (Val, status.Status) {
 
 func (db *DB) Del(key Key) (sts status.Status) {
 	sts = status.OK
-	s := db.shard(key)
+	s := db.shardFor(key)
 	s.mu.Lock()
 
 	if _, ok := s.keyVal[key]; !ok {
@@ -46,7 +46,7 @@ func (db *DB) Del(key Key) (sts status.Status) {
 }
 
 func (db *DB) Exists(key Key) status.Status {
-	s := db.shard(key)
+	s := db.shardFor(key)
 	s.mu.RLock()
 
 	if _, ok := s.keyVal[key]; !ok {

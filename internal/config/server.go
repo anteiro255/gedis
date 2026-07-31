@@ -1,7 +1,6 @@
 package config
 
 import (
-	"log/slog"
 	"os"
 	"time"
 )
@@ -22,7 +21,8 @@ type ServerConfig struct {
 	sendTimeout time.Duration // SEND_TIMEOUT
 }
 
-func LoadServerCfg() (c *ServerConfig) {
+func LoadServerConfig() (c *ServerConfig) {
+	c = DefaultServerConfig()
 	c.loadAddress()
 	c.loadTCPPingInterval()
 	c.loadReceiveTimeout()
@@ -32,13 +32,10 @@ func LoadServerCfg() (c *ServerConfig) {
 
 // address
 func (c *ServerConfig) loadAddress() {
-	envKey := "GEDIS_ADDRESS"
+	envKey := envPrefix + "ADDRESS"
 	if s := os.Getenv(envKey); s != "" {
 		c.address = s
-		return
 	}
-	slog.Debug("Failed to load the "+envKey+" environment variable", "current_address", defaultAddress)
-	c.address = defaultAddress
 }
 
 func (c *ServerConfig) Address() string {
@@ -47,12 +44,10 @@ func (c *ServerConfig) Address() string {
 
 // tcpPingInterval
 func (c *ServerConfig) loadTCPPingInterval() {
-	envKey := "GEDIS_TCP_PING_INTERVAL"
+	envKey := envPrefix + "TCP_PING_INTERVAL"
 	if dur, ok := loadTime(envKey); ok {
 		c.tcpPingInterval = dur
-		return
 	}
-	c.tcpPingInterval = defaultTCPPingInterval
 }
 
 func (c *ServerConfig) TCPPingInterval() time.Duration {
@@ -61,12 +56,10 @@ func (c *ServerConfig) TCPPingInterval() time.Duration {
 
 // receiveTimeout
 func (c *ServerConfig) loadReceiveTimeout() {
-	envKey := "GEDIS_RECEIVE_TIMEOUT"
+	envKey := envPrefix + "RECEIVE_TIMEOUT"
 	if t, ok := loadTime(envKey); ok {
 		c.receiveTimeout = t
-		return
 	}
-	c.receiveTimeout = defaultReceiveTimeout
 }
 
 func (c *ServerConfig) ReceiveTimeout() time.Duration {
@@ -75,12 +68,10 @@ func (c *ServerConfig) ReceiveTimeout() time.Duration {
 
 // sendTimeout
 func (c *ServerConfig) loadSendTimeout() {
-	envKey := "GEDIS_SEND_TIMEOUT"
+	envKey := envPrefix + "SEND_TIMEOUT"
 	if t, ok := loadTime(envKey); ok {
 		c.sendTimeout = t
-		return
 	}
-	c.sendTimeout = defaultSendTimeout
 }
 
 func (c *ServerConfig) SendTimeout() time.Duration {
