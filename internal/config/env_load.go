@@ -1,204 +1,48 @@
 package config
 
-import (
-	"log/slog"
-	"os"
-	"strconv"
-	"time"
-)
+import "time"
 
-// Config
 type Config struct {
-
-	// address at which the server will be run
-	address string // GEDIS_ADDRESS
-
-	// verbosity is the level of logs:
-	//     0: Error
-	//     1: Warn, Error
-	//     2: Info, Warn, Error
-	//     3: Debug, Info, Warn, Error
-	verbosity uint8 // GEDIS_VERBOSITY
-
-	// OS-level probing on idle TCP sockets
-	// time of the gaps between OS-level TCP pings to a client
-	tcpPingInterval time.Duration // GEDIS_TCP_PING_INTERVAL
-
-	// Max time allowed to read a complete request frame AFTER the first byte arrives
-	receiveTimeout time.Duration // RECEIVE_TIMEOUT
-
-	// Max time allowed to write a complete response frame AFTER the first byte is written
-	sendTimeout time.Duration // SEND_TIMEOUT
-
-	// Quantity of random entries in the database that are checked for liveness every second
-	ttlEntryCheckPerSecond uint // GEDIS_ENTRY_CHECKS_PER_SECOND
-
-	// Path to the file in which snapsots will be saved (./gedis.snap by default)
-	snapshotPath string // GEDIS_SNAPSHOT_PATH
-
-	// time of the gaps between snapsot savings
-	snapshotInterval time.Duration // GEDIS_SNAPSHOT_INTERVAL
-
-}
-
-func PreLoad() (cfg *Config) {
-	cfg = &Config{}
-	cfg.loadVerbosity()
-	return
+	Server  *ServerConfig
+	Storage *StorageConfig
 }
 
 func Load() (cfg *Config) {
 	cfg = &Config{}
-	cfg.loadAddress()
-	cfg.loadTCPPingInterval()
-	cfg.loadReceiveTimeout()
-	cfg.loadSendTimeout()
-	cfg.loadTTLEntryCheckPerSecond()
-	cfg.loadSnapshotPath()
-	cfg.loadSnapshotInterval()
+
+	cfg.Server = LoadServerCfg()
+	cfg.Storage = LoadStorageCfg()
 	return
 }
 
-// address
-func (c *Config) loadAddress() {
-	envKey := "GEDIS_ADDRESS"
-	if s := os.Getenv(envKey); s != "" {
-		c.address = s
-		return
-	}
-	slog.Debug("Failed to load the "+envKey+" environment variable", "current_address", defaultAddress)
-	c.address = defaultAddress
-}
+// Server config delegation
 
 func (c *Config) Address() string {
-	return c.address
-}
-
-// verbosity
-func (c *Config) loadVerbosity() {
-	envKey := "GEDIS_VERBOSITY"
-	if s := os.Getenv(envKey); s != "" {
-		if n, err := strconv.Atoi(s); err == nil {
-			if n >= int(minVerbosity) && n <= int(maxVerbosity) {
-				c.verbosity = uint8(n)
-				return
-			}
-		}
-	}
-	slog.Debug("Failed to load the "+envKey+" environment variable", "current_verbosity", defaultVerbosity)
-	c.verbosity = defaultVerbosity
-}
-
-func (c *Config) Verbosity() uint8 {
-	return c.verbosity
-}
-
-// tcpPingInterval
-func (c *Config) loadTCPPingInterval() {
-	envKey := "GEDIS_TCP_PING_INTERVAL"
-	if s := os.Getenv(envKey); s != "" {
-		if n, err := strconv.Atoi(s); err == nil {
-			if n > 0 {
-				c.tcpPingInterval = time.Duration(n) * time.Millisecond
-				return
-			}
-		}
-	}
-	slog.Debug("Failed to load the "+envKey+" environment variable", "current_tcp_keep_alive_period", defaultTCPPingIntervalInMs)
-	c.tcpPingInterval = time.Duration(defaultTCPPingIntervalInMs) * time.Millisecond
+	return c.Server.Address()
 }
 
 func (c *Config) TCPPingInterval() time.Duration {
-	return c.tcpPingInterval
-}
-
-// receiveTimeout
-func (c *Config) loadReceiveTimeout() {
-	envKey := "GEDIS_RECEIVE_TIMEOUT"
-	if s := os.Getenv(envKey); s != "" {
-		if n, err := strconv.Atoi(s); err == nil {
-			if n > 0 {
-				c.receiveTimeout = time.Duration(n) * time.Millisecond
-				return
-			}
-		}
-	}
-	slog.Debug("Failed to load the "+envKey+" environment variable", "current_receive_timeout", defaultReceiveTimeoutInMs)
-	c.receiveTimeout = time.Duration(defaultReceiveTimeoutInMs) * time.Millisecond
+	return c.Server.TCPPingInterval()
 }
 
 func (c *Config) ReceiveTimeout() time.Duration {
-	return c.receiveTimeout
-}
-
-// sendTimeout
-func (c *Config) loadSendTimeout() {
-	envKey := "GEDIS_SEND_TIMEOUT"
-	if s := os.Getenv(envKey); s != "" {
-		if n, err := strconv.Atoi(s); err == nil {
-			if n > 0 {
-				c.sendTimeout = time.Duration(n) * time.Millisecond
-				return
-			}
-		}
-	}
-	slog.Debug("Failed to load the "+envKey+" environment variable", "current_send_timeout", defaultSendTimeoutInMs)
-	c.sendTimeout = time.Duration(defaultSendTimeoutInMs) * time.Millisecond
+	return c.Server.ReceiveTimeout()
 }
 
 func (c *Config) SendTimeout() time.Duration {
-	return c.sendTimeout
+	return c.Server.SendTimeout()
 }
 
-// ttlEntryCheckPerSecond
-func (c *Config) loadTTLEntryCheckPerSecond() {
-	envKey := "GEDIS_ENTRY_CHECKS_PER_SECOND"
-	if s := os.Getenv(envKey); s != "" {
-		if n, err := strconv.Atoi(s); err == nil {
-			if n > 0 {
-				c.ttlEntryCheckPerSecond = uint(n)
-				return
-			}
-		}
-	}
-	slog.Debug("Failed to load the "+envKey+" environment variable", "current_ttl_entries_checking_per_second", defaultTTLEntryCheckPerSecond)
-	c.ttlEntryCheckPerSecond = defaultTTLEntryCheckPerSecond
-}
+// Storage config delegation
 
 func (c *Config) TTLEntryCheckPerSecond() uint {
-	return c.ttlEntryCheckPerSecond
-}
-
-// snapshotPath
-func (c *Config) loadSnapshotPath() {
-	envKey := "GEDIS_SNAPSHOT_PATH"
-	if s := os.Getenv(envKey); s != "" {
-		c.snapshotPath = s
-		return
-	}
-	slog.Debug("Failed to load the "+envKey+" environment variable", "current_snapshot_path", defaultSnapshotPath)
-	c.snapshotPath = defaultSnapshotPath
+	return c.Storage.TTLEntryCheckPerSecond()
 }
 
 func (c *Config) SnapshotPath() string {
-	return c.snapshotPath
-}
-
-// snapshotInterval
-func (c *Config) loadSnapshotInterval() {
-	envKey := "GEDIS_SNAPSHOT_INTERVAL"
-	if s := os.Getenv(envKey); s != "" {
-		if n, err := strconv.Atoi(s); err == nil {
-			if n > 0 {
-				c.snapshotInterval = time.Duration(n) * time.Second
-				return
-			}
-		}
-	}
-	slog.Debug("Failed to load the "+envKey+" environment variable", "current_snapshot_interval_seconds", defaultSnapshotIntervalInSec)
-	c.snapshotInterval = time.Duration(defaultSnapshotIntervalInSec) * time.Second
+	return c.Storage.SnapshotPath()
 }
 
 func (c *Config) SnapshotInterval() time.Duration {
-	return c.snapshotInterval
+	return c.Storage.SnapshotInterval()
 }

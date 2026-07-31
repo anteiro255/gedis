@@ -7,7 +7,7 @@ import (
 	"github.com/anteiro255/gedis/internal/config"
 )
 
-func InitLogger(cfg *config.Config) {
+func InitLogger(cfg *config.LogConfig) {
 	var logLevel slog.Level
 	switch cfg.Verbosity() {
 	case 0:

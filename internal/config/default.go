@@ -3,25 +3,28 @@ package config
 import "time"
 
 const (
-	defaultAddress                string = ":8080"
-	defaultVerbosity              uint8  = 2
-	defaultTCPPingIntervalInMs    int64  = 30000
-	defaultReceiveTimeoutInMs     int64  = 3000
-	defaultSendTimeoutInMs        int64  = 3000
-	defaultTTLEntryCheckPerSecond uint   = 200
-	defaultSnapshotPath           string = "./gedis.snap"
-	defaultSnapshotIntervalInSec  int64  = 300
+	defaultAddress                string        = ":8080"
+	defaultVerbosity              uint8         = 2
+	defaultTCPPingInterval        time.Duration = 30 * time.Second
+	defaultReceiveTimeout         time.Duration = 3 * time.Second
+	defaultSendTimeout            time.Duration = 3 * time.Second
+	defaultTTLEntryCheckPerSecond uint          = 200
+	defaultSnapshotPath           string        = "./gedis.snap"
+	defaultSnapshotInterval       time.Duration = 300 * time.Second
 )
 
 func Default() (cfg *Config) {
 	return &Config{
-		address:                defaultAddress,
-		verbosity:              defaultVerbosity,
-		tcpPingInterval:        time.Duration(defaultTCPPingIntervalInMs) * time.Millisecond,
-		receiveTimeout:         time.Duration(defaultReceiveTimeoutInMs) * time.Millisecond,
-		sendTimeout:            time.Duration(defaultSendTimeoutInMs) * time.Millisecond,
-		ttlEntryCheckPerSecond: defaultTTLEntryCheckPerSecond,
-		snapshotPath:           defaultSnapshotPath,
-		snapshotInterval:       time.Duration(defaultSnapshotIntervalInSec) * time.Second,
+		Server: &ServerConfig{
+			address:         defaultAddress,
+			tcpPingInterval: defaultTCPPingInterval,
+			receiveTimeout:  defaultReceiveTimeout,
+			sendTimeout:     defaultSendTimeout,
+		},
+		Storage: &StorageConfig{
+			ttlEntryCheckPerSecond: defaultTTLEntryCheckPerSecond,
+			snapshotPath:           defaultSnapshotPath,
+			snapshotInterval:       defaultSnapshotInterval,
+		},
 	}
 }
