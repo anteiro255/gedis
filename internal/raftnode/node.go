@@ -48,7 +48,7 @@ func NewNode(cfg *config.RaftConfig, database *db.DB) (*Node, error) {
 	if err := os.MkdirAll(filepath.Dir(cfg.StableStorePath()), 0o755); err != nil {
 		return nil, fmt.Errorf("create raft stable store directory: %w", err)
 	}
-	if err := os.MkdirAll(cfg.SnapshotsPath(), 0o755); err != nil {
+	if err := os.MkdirAll(cfg.SnapshotsDirPath(), 0o755); err != nil {
 		return nil, fmt.Errorf("create raft snapshot directory: %w", err)
 	}
 
@@ -61,7 +61,7 @@ func NewNode(cfg *config.RaftConfig, database *db.DB) (*Node, error) {
 		logStore.Close()
 		return nil, fmt.Errorf("open raft stable store: %w", err)
 	}
-	snapshots, err := hraft.NewFileSnapshotStore(cfg.SnapshotsPath(), 2, io.Discard)
+	snapshots, err := hraft.NewFileSnapshotStore(cfg.SnapshotsDirPath(), 2, io.Discard)
 	if err != nil {
 		stableStore.Close()
 		logStore.Close()

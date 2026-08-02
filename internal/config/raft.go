@@ -1,7 +1,6 @@
 package config
 
 import (
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -9,22 +8,22 @@ import (
 const raftEnvPrefix = envPrefix + "RAFT_"
 
 type RaftConfig struct {
-	enabled            bool          // GEDIS_RAFT_ENABLED
-	nodeID             string        // GEDIS_RAFT_NODE_ID
-	address            string        // GEDIS_RAFT_ADDRESS
-	peerAddresses      []string      // GEDIS_RAFT_PEER_ADDRESSES (peer address are separated with a comma)
-	heartbeatInterval  time.Duration // GEDIS_RAFT_HEARTBEAT_INTERVAL
-	electionTimeoutMin time.Duration // GEDIS_RAFT_ELECTION_TIMEOUT_MIN
-	electionTimeoutMax time.Duration // GEDIS_RAFT_ELECTION_TIMEOUT_MAX
-	replicationTimeout time.Duration // GEDIS_RAFT_REPLICATION_TIMEOUT
-	commitTimeout      time.Duration // GEDIS_RAFT_COMMIT_TIMEOUT
-	snapshotInterval   time.Duration // GEDIS_RAFT_SNAPSHOT_INTERVAL
-	snapshotThreshold  uint64        // GEDIS_RAFT_SNAPSHOT_THRESHOLD
-	trailingLogs       uint64        // GEDIS_RAFT_TRAILING_LOGS
-	maxAppendEntries   uint64        // GEDIS_RAFT_MAX_APPEND_ENTRIES
-	logPath            string        // GEDIS_RAFT_LOG_PATH
-	stableStorePath    string        // GEDIS_RAFT_STABLE_STORE_PATH
-	snapshotsPath      string        // GEDIS_RAFT_SNAPSHOTS_PATH
+	enabled              bool          // GEDIS_RAFT_ENABLED
+	nodeID               string        // GEDIS_RAFT_NODE_ID
+	address              string        // GEDIS_RAFT_ADDRESS
+	peerAddresses        []string      // GEDIS_RAFT_PEER_ADDRESSES (peer address are separated with a comma)
+	heartbeatInterval    time.Duration // GEDIS_RAFT_HEARTBEAT_INTERVAL
+	electionTimeoutMin   time.Duration // GEDIS_RAFT_ELECTION_TIMEOUT_MIN
+	electionTimeoutMax   time.Duration // GEDIS_RAFT_ELECTION_TIMEOUT_MAX
+	replicationTimeout   time.Duration // GEDIS_RAFT_REPLICATION_TIMEOUT
+	commitTimeout        time.Duration // GEDIS_RAFT_COMMIT_TIMEOUT
+	snapshotInterval     time.Duration // GEDIS_RAFT_SNAPSHOT_INTERVAL
+	snapshotThreshold    uint64        // GEDIS_RAFT_SNAPSHOT_THRESHOLD
+	trailingLogs         uint64        // GEDIS_RAFT_TRAILING_LOGS
+	maxAppendEntries     uint64        // GEDIS_RAFT_MAX_APPEND_ENTRIES
+	logPath              string        // GEDIS_RAFT_LOG_PATH
+	stableStorePath      string        // GEDIS_RAFT_STABLE_STORE_PATH
+	raftSnapshotsDirPath string        // GEDIS_RAFT_SNAPSHOTS_DIR_PATH
 }
 
 // LoadRaftCfg loads all Raft settings. GEDIS_RAFT_ENABLED controls whether
@@ -47,7 +46,7 @@ func LoadRaftCfg() (c *RaftConfig) {
 	c.loadMaxAppendEntries()
 	c.loadLogPath()
 	c.loadStableStorePath()
-	c.loadSnapshotsPath()
+	c.loadRaftSnapshotsDirPath()
 
 	return
 }
@@ -137,9 +136,9 @@ func (c *RaftConfig) loadStableStorePath() {
 	}
 }
 
-func (c *RaftConfig) loadSnapshotsPath() {
-	if value, ok := loadString(raftEnvPrefix + "SNAPSHOTS_PATH"); ok {
-		c.snapshotsPath = value
+func (c *RaftConfig) loadRaftSnapshotsDirPath() {
+	if value, ok := loadString(raftEnvPrefix + "SNAPSHOTS_DIR_PATH"); ok {
+		c.raftSnapshotsDirPath = value
 	}
 }
 
@@ -159,7 +158,4 @@ func (c *RaftConfig) TrailingLogs() uint64              { return c.trailingLogs 
 func (c *RaftConfig) MaxAppendEntries() uint64          { return c.maxAppendEntries }
 func (c *RaftConfig) LogPath() string                   { return c.logPath }
 func (c *RaftConfig) StableStorePath() string           { return c.stableStorePath }
-func (c *RaftConfig) SnapshotsPath() string             { return c.snapshotsPath }
-func (c *RaftConfig) SnapshotPath() string {
-	return filepath.Join(c.snapshotsPath, "database.snap")
-}
+func (c *RaftConfig) SnapshotsDirPath() string          { return c.raftSnapshotsDirPath }

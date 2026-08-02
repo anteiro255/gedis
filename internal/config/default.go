@@ -22,27 +22,28 @@ func DefaultServerConfig() *ServerConfig {
 func DefaultStorageConfig() *StorageConfig {
 	return &StorageConfig{
 		ttlEntryCheckPerSecond: 200,
+		standaloneSnapshotPath: "/var/lib/gedis/db.snap",
 	}
 }
 
 func DefaultRaftConfig() *RaftConfig {
 	return &RaftConfig{
-		enabled:            false,
-		nodeID:             "",
-		address:            ":7000",
-		peerAddresses:      nil,
-		heartbeatInterval:  100 * time.Millisecond,
-		electionTimeoutMin: 300 * time.Millisecond,
-		electionTimeoutMax: 600 * time.Millisecond,
-		replicationTimeout: time.Second,
-		commitTimeout:      5 * time.Millisecond,
-		snapshotInterval:   10 * time.Minute,
-		snapshotThreshold:  8192,
-		trailingLogs:       1024,
-		maxAppendEntries:   64,
-		logPath:            "./gedis-raft/aof.log",
-		stableStorePath:    "./gedis-raft/stable.db",
-		snapshotsPath:      "./gedis-raft/snapshots",
+		enabled:              false,
+		nodeID:               "",
+		address:              ":7000",
+		peerAddresses:        nil,
+		heartbeatInterval:    100 * time.Millisecond,
+		electionTimeoutMin:   300 * time.Millisecond,
+		electionTimeoutMax:   600 * time.Millisecond,
+		replicationTimeout:   time.Second,
+		commitTimeout:        5 * time.Millisecond,
+		snapshotInterval:     10 * time.Minute,
+		snapshotThreshold:    8192,
+		trailingLogs:         1024,
+		maxAppendEntries:     64,
+		logPath:              "/var/lib/gedis/raft/aof.log",
+		stableStorePath:      "/var/lib/gedis/raft/stable.db",
+		raftSnapshotsDirPath: "/var/lib/gedis/raft/snapshots/",
 	}
 }
 

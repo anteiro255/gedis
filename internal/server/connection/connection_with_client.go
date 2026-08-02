@@ -239,5 +239,5 @@ func (conn *Conn) Serve() {
 func isMutation(op protocolaction.Action) bool {
 	// These operations change replicated state; GET, EXISTS, and TTL_GET are
 	// safe to execute locally on every member.
-	return op == protocolaction.Set || op == protocolaction.Del || op == protocolaction.TTL_Set || op == protocolaction.TTL_Del || op == protocolaction.TTL_Expire
+	return op == protocolaction.Set || op == protocolaction.Del || op == protocolaction.TTL_Set || op == protocolaction.TTL_Del
 }

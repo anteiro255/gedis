@@ -22,7 +22,7 @@ func TestNodeAppliesCommittedMutation(t *testing.T) {
 	setEnv(t, "GEDIS_RAFT_NODE_ID", address)
 	setEnv(t, "GEDIS_RAFT_LOG_PATH", filepath.Join(dataPath, "raft", "aof.log"))
 	setEnv(t, "GEDIS_RAFT_STABLE_STORE_PATH", filepath.Join(dataPath, "raft", "stable.db"))
-	setEnv(t, "GEDIS_RAFT_SNAPSHOTS_PATH", filepath.Join(dataPath, "snapshots"))
+	setEnv(t, "GEDIS_RAFT_SNAPSHOTS_DIR_PATH", filepath.Join(dataPath, "snapshots"))
 	setEnv(t, "GEDIS_RAFT_HEARTBEAT_INTERVAL", "20ms")
 	setEnv(t, "GEDIS_RAFT_ELECTION_TIMEOUT_MIN", "50ms")
 	setEnv(t, "GEDIS_RAFT_ELECTION_TIMEOUT_MAX", "100ms")
@@ -35,8 +35,8 @@ func TestNodeAppliesCommittedMutation(t *testing.T) {
 	if got := cfg.StableStorePath(); got != filepath.Join(dataPath, "raft", "stable.db") {
 		t.Fatalf("stable store path = %q", got)
 	}
-	if got := cfg.SnapshotsPath(); got != filepath.Join(dataPath, "snapshots") {
-		t.Fatalf("snapshots path = %q", got)
+	if got := cfg.SnapshotsDirPath(); got != filepath.Join(dataPath, "snapshots") {
+		t.Fatalf("snapshots dir path = %q", got)
 	}
 	database := db.NewDB()
 	node, err := NewNode(cfg, database)
@@ -56,10 +56,10 @@ func TestNodeAppliesCommittedMutation(t *testing.T) {
 			t.Fatalf("Raft file path %q was created as a directory", path)
 		}
 	}
-	if info, err := os.Stat(cfg.SnapshotsPath()); err != nil {
-		t.Fatalf("Raft snapshots path %q was not created: %v", cfg.SnapshotsPath(), err)
+	if info, err := os.Stat(cfg.SnapshotsDirPath()); err != nil {
+		t.Fatalf("Raft snapshots directory path %q was not created: %v", cfg.SnapshotsDirPath(), err)
 	} else if !info.IsDir() {
-		t.Fatalf("Raft snapshots path %q is not a directory", cfg.SnapshotsPath())
+		t.Fatalf("Raft snapshots directory path %q is not a directory", cfg.SnapshotsDirPath())
 	}
 
 	deadline := time.Now().Add(2 * time.Second)

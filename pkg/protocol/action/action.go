@@ -10,5 +10,4 @@ const (
 	TTL_Set
 	TTL_Get
 	TTL_Del
-	TTL_Expire
 )

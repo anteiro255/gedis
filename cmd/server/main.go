@@ -27,12 +27,14 @@ func main() {
 	var wg sync.WaitGroup
 
 	if !cfg.Raft.Enabled() {
-		if err := database.LoadSnapshot(cfg.Raft.SnapshotPath()); err != nil {
-			slog.Error("Failed to load snapshot", "path", cfg.Raft.SnapshotPath(), "error", err)
+		if err := database.LoadSnapshot(cfg.Storage.StandaloneSnapshotPath()); err != nil {
+			slog.Error("Failed to load snapshot", "path", cfg.Storage.StandaloneSnapshotPath(), "error", err)
 			os.Exit(1)
 		}
 		wg.Go(func() { database.RunTTLManager(ctx, cfg.Storage.TTLEntryCheckPerSecond()) })
-		wg.Go(func() { database.RunSnapshotter(ctx, cfg.Raft.SnapshotPath(), cfg.Raft.SnapshotInterval()) })
+		wg.Go(func() {
+			database.RunSnapshotter(ctx, cfg.Storage.StandaloneSnapshotPath(), cfg.Raft.SnapshotInterval())
+		})
 	}
 
 	s := server.NewServer(database)

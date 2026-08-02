@@ -47,12 +47,6 @@ func (a *Action) Perform() ([]byte, status.Status) {
 	case action.TTL_Del:
 		return nil, a.DB.DelTTL(a.Key)
 
-	case action.TTL_Expire:
-		if len(a.Body) != 4 {
-			return nil, status.WrongInput
-		}
-		return nil, a.DB.Expire(a.Key, db.TTL(binary.BigEndian.Uint32(a.Body)))
-
 	default:
 		return nil, status.WrongInput
 	}
