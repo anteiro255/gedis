@@ -2,7 +2,7 @@ BINARY_NAME=server
 BUILD_DIR=bin
 CMD_DIR=./cmd/server
 
-.PHONY: all build run test check clean format help
+.PHONY: all build run test clean format help
 all: format test build
 
 build:
@@ -16,11 +16,6 @@ run:
 
 test:
 	@echo "Running tests..."
-	go test -v -race ./internal/...
-
-check:
-	@echo "Checking all the project..."
-	go build $(CMD_DIR)
 	go test -v -race ./internal/...
 
 clean:

@@ -1,6 +1,6 @@
 # Gedis
 
-![gedis](image.png)
+![gedis](gedis.png)
 
 Gedis is an in-memory key-value database exposed through a persistent binary TCP protocol. It supports byte-oriented keys and values, per-key expiration, standalone persistence, and optional Raft replication.
 
